@@ -1,4 +1,14 @@
-// Phase 1 placeholder renderer entry. Phase 4 will replace this with the React
-// root that mounts the color-grading workspace.
-const root = document.getElementById("root") ?? document.body;
-root.textContent = "boot";
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { App } from "./app";
+import "./index.css";
+
+const root = document.getElementById("root");
+
+if (root !== null) {
+  createRoot(root).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  );
+}
