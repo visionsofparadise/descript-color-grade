@@ -1,0 +1,51 @@
+{
+  "name": "descript-color-grade",
+  "productName": "Descript Color Grade",
+  "version": "1.0.0",
+  "description": "Bit-exact Descript color grade preview for podcast grading",
+  "main": ".vite/build/main.js",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "rimraf ./node_modules/.vite && electron-forge start",
+    "package": "electron-forge package",
+    "make": "electron-forge make",
+    "publish": "electron-forge publish",
+    "check": "concurrently \"eslint . --fix --cache --format ./agent-eslint.js\" \"tsc --noEmit --pretty false 2>&1 | node ./agent-tsc.js\"",
+    "check:verbose": "concurrently \"eslint . --cache\" \"tsc --noEmit\"",
+    "lint": "eslint . --fix --cache --format ./agent-eslint.js",
+    "lint:verbose": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "unit": "vitest run"
+  },
+  "keywords": [],
+  "author": {
+    "name": "visionsofparadise",
+    "email": "matt@mattcavender.com"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@electron-forge/cli": "^7.11.1",
+    "@electron-forge/maker-deb": "^7.11.1",
+    "@electron-forge/maker-rpm": "^7.11.1",
+    "@electron-forge/maker-squirrel": "^7.11.1",
+    "@electron-forge/maker-zip": "^7.11.1",
+    "@electron-forge/plugin-auto-unpack-natives": "^7.11.1",
+    "@electron-forge/plugin-fuses": "^7.11.1",
+    "@electron-forge/plugin-vite": "^7.11.1",
+    "@electron/fuses": "^1.8.0",
+    "@types/electron-squirrel-startup": "^1.0.2",
+    "@typescript-eslint/eslint-plugin": "^5.62.0",
+    "@typescript-eslint/parser": "^5.62.0",
+    "concurrently": "^9.2.1",
+    "electron": "41.2.0",
+    "eslint": "^8.57.1",
+    "eslint-plugin-import": "^2.32.0",
+    "rimraf": "^6.1.3",
+    "typescript": "~4.5.4",
+    "vite": "^5.4.21"
+  },
+  "dependencies": {
+    "electron-squirrel-startup": "^1.0.1"
+  }
+}
