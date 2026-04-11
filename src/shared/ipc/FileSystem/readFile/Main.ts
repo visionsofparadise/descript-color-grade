@@ -4,21 +4,21 @@ import {
   type IpcHandlerDependencies,
 } from "../../../models/AsyncMainIpc";
 import {
-  READ_PROJECT_FILE_ACTION,
-  type ReadProjectFileIpcParameters,
-  type ReadProjectFileIpcReturn,
+  READ_FILE_ACTION,
+  type ReadFileIpcParameters,
+  type ReadFileIpcReturn,
 } from "./Renderer";
 
-export class ReadProjectFileMainIpc extends AsyncMainIpc<
-  ReadProjectFileIpcParameters,
-  ReadProjectFileIpcReturn
+export class ReadFileMainIpc extends AsyncMainIpc<
+  ReadFileIpcParameters,
+  ReadFileIpcReturn
 > {
-  action = READ_PROJECT_FILE_ACTION;
+  action = READ_FILE_ACTION;
 
   async handler(
     filePath: string,
     _dependencies: IpcHandlerDependencies,
-  ): Promise<ReadProjectFileIpcReturn> {
+  ): Promise<ReadFileIpcReturn> {
     return fs.readFile(filePath, "utf8");
   }
 }

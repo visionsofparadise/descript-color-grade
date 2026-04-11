@@ -4,22 +4,22 @@ import {
   type IpcHandlerDependencies,
 } from "../../../models/AsyncMainIpc";
 import {
-  WRITE_PROJECT_FILE_ACTION,
-  type WriteProjectFileIpcParameters,
-  type WriteProjectFileIpcReturn,
+  WRITE_FILE_ACTION,
+  type WriteFileIpcParameters,
+  type WriteFileIpcReturn,
 } from "./Renderer";
 
-export class WriteProjectFileMainIpc extends AsyncMainIpc<
-  WriteProjectFileIpcParameters,
-  WriteProjectFileIpcReturn
+export class WriteFileMainIpc extends AsyncMainIpc<
+  WriteFileIpcParameters,
+  WriteFileIpcReturn
 > {
-  action = WRITE_PROJECT_FILE_ACTION;
+  action = WRITE_FILE_ACTION;
 
   async handler(
     filePath: string,
     content: string,
     _dependencies: IpcHandlerDependencies,
-  ): Promise<WriteProjectFileIpcReturn> {
+  ): Promise<WriteFileIpcReturn> {
     await fs.writeFile(filePath, content, "utf8");
 
     return undefined;

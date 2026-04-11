@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  fetchMediaBlob,
-  pickMedia,
-  pickOpenProject,
-  pickSaveProject,
-  readProjectFile,
-  writeProjectFile,
+  mediaUrl,
+  readFile,
+  showOpenDialog,
+  showSaveDialog,
+  writeFile,
 } from "./fs-api";
 import { Sidebar } from "./Sidebar";
 import { Workspace } from "./Workspace";
@@ -85,14 +84,12 @@ function basename(absolutePath: string): string {
   return slashPos === -1 ? normalized : normalized.slice(slashPos + 1);
 }
 
-async function loadMediaFromPath(path: string): Promise<LoadedMedia> {
-  const blob = await fetchMediaBlob(path);
-
+function loadMediaFromPath(path: string): LoadedMedia {
   return {
     id: crypto.randomUUID(),
     path,
     name: basename(path),
-    url: URL.createObjectURL(blob),
+    url: mediaUrl(path),
     kind: detectKind(path),
     frameTime: 0,
     props: { ...NEUTRAL_PROPS },
@@ -117,48 +114,43 @@ export function App() {
     [],
   );
 
-  const addMediaByPaths = useCallback(async (paths: Array<string>) => {
+  const addMediaByPaths = useCallback((paths: Array<string>) => {
     if (paths.length === 0) return;
 
-    const loaded = await Promise.all(
-      paths.map((path) =>
-        loadMediaFromPath(path).catch((error: unknown) => {
-          console.error(`failed to load ${path}:`, error);
+    const loaded = paths.map(loadMediaFromPath);
+    const firstId = loaded[0]?.id;
 
-          return null;
-        }),
-      ),
-    );
-    const valid = loaded.filter(
-      (entry): entry is LoadedMedia => entry !== null,
-    );
-
-    if (valid.length === 0) return;
-
-    const firstId = valid[0]?.id;
-
-    setMedia((prev) => [...prev, ...valid]);
+    setMedia((prev) => [...prev, ...loaded]);
     setSelectedId((prev) => prev ?? firstId ?? null);
   }, []);
 
   const handleAddMedia = useCallback(async () => {
     try {
-      const paths = await pickMedia();
-
-      await addMediaByPaths(paths);
+      const paths = await showOpenDialog({
+        title: "Select media",
+        properties: ["openFile", "multiSelections"],
+        filters: [
+          {
+            name: "Media",
+            extensions: [
+              "png", "jpg", "jpeg", "webp", "bmp", "gif",
+              "mp4", "mov", "webm", "mkv", "avi", "m4v",
+            ],
+          },
+          { name: "Images", extensions: ["png", "jpg", "jpeg", "webp", "bmp", "gif"] },
+          { name: "Videos", extensions: ["mp4", "mov", "webm", "mkv", "avi", "m4v"] },
+          { name: "All files", extensions: ["*"] },
+        ],
+      });
+      if (paths === undefined) return;
+      addMediaByPaths(paths);
     } catch (error) {
       console.error("add media failed:", error);
     }
   }, [addMediaByPaths]);
 
   const removeMedia = useCallback((id: string) => {
-    setMedia((prev) => {
-      const target = prev.find((entry) => entry.id === id);
-
-      if (target) URL.revokeObjectURL(target.url);
-
-      return prev.filter((entry) => entry.id !== id);
-    });
+    setMedia((prev) => prev.filter((entry) => entry.id !== id));
     setSelectedId((prev) => (prev === id ? null : prev));
     pendingRef.current.delete(id);
   }, []);
@@ -207,31 +199,22 @@ export function App() {
     setMedia(nextMedia);
   }, []);
 
-  const updateMediaPath = useCallback(async (id: string, nextPath: string) => {
-    try {
-      const blob = await fetchMediaBlob(nextPath);
-      const nextUrl = URL.createObjectURL(blob);
+  const updateMediaPath = useCallback((id: string, nextPath: string) => {
+    setMedia((prev) =>
+      prev.map((entry) => {
+        if (entry.id !== id) return entry;
 
-      setMedia((prev) =>
-        prev.map((entry) => {
-          if (entry.id !== id) return entry;
-
-          URL.revokeObjectURL(entry.url);
-
-          return {
-            ...entry,
-            path: nextPath,
-            name: basename(nextPath),
-            url: nextUrl,
-            kind: detectKind(nextPath),
-            frameTime: 0,
-            duration: undefined,
-          };
-        }),
-      );
-    } catch (error) {
-      console.error(`failed to reload from ${nextPath}:`, error);
-    }
+        return {
+          ...entry,
+          path: nextPath,
+          name: basename(nextPath),
+          url: mediaUrl(nextPath),
+          kind: detectKind(nextPath),
+          frameTime: 0,
+          duration: undefined,
+        };
+      }),
+    );
   }, []);
 
   const updateFrameTime = useCallback((id: string, frameTime: number) => {
@@ -252,9 +235,14 @@ export function App() {
 
   const saveProject = useCallback(async () => {
     try {
-      const savePath = await pickSaveProject();
-
-      if (savePath === null) return;
+      const savePath = await showSaveDialog({
+        title: "Save project",
+        defaultPath: "project.dcg",
+        filters: [
+          { name: "Descript Color Grade Project", extensions: ["dcg"] },
+        ],
+      });
+      if (savePath === undefined) return;
 
       const payload: ProjectFile = {
         version: 1,
@@ -266,7 +254,7 @@ export function App() {
         })),
       };
 
-      await writeProjectFile(savePath, JSON.stringify(payload, null, 2));
+      await writeFile(savePath, JSON.stringify(payload, null, 2));
     } catch (error) {
       console.error("save project failed:", error);
     }
@@ -274,11 +262,17 @@ export function App() {
 
   const loadProject = useCallback(async () => {
     try {
-      const openPath = await pickOpenProject();
+      const paths = await showOpenDialog({
+        title: "Open project",
+        properties: ["openFile"],
+        filters: [
+          { name: "Descript Color Grade Project", extensions: ["dcg"] },
+        ],
+      });
+      const openPath = paths?.[0];
+      if (openPath === undefined) return;
 
-      if (openPath === null) return;
-
-      const text = await readProjectFile(openPath);
+      const text = await readFile(openPath);
       const parsed: unknown = JSON.parse(text);
 
       if (
@@ -296,40 +290,23 @@ export function App() {
       }
 
       const entries = (parsed as ProjectFile).media;
-      const loaded: Array<LoadedMedia | null> = await Promise.all(
-        entries.map(async (entry): Promise<LoadedMedia | null> => {
-          try {
-            const blob = await fetchMediaBlob(entry.path);
-            const kind = entry.kind ?? detectKind(entry.path);
-            const mediaEntry: LoadedMedia = {
-              id: crypto.randomUUID(),
-              path: entry.path,
-              name: basename(entry.path),
-              url: URL.createObjectURL(blob),
-              kind,
-              frameTime: entry.frameTime ?? 0,
-              props: { ...NEUTRAL_PROPS, ...entry.props },
-            };
+      const loaded: Array<LoadedMedia> = entries.map((entry) => {
+        const kind = entry.kind ?? detectKind(entry.path);
 
-            return mediaEntry;
-          } catch (error) {
-            console.error(`failed to load ${entry.path}:`, error);
-
-            return null;
-          }
-        }),
-      );
-      const valid: Array<LoadedMedia> = loaded.filter(
-        (entry): entry is LoadedMedia => entry !== null,
-      );
-
-      setMedia((prev) => {
-        for (const entry of prev) URL.revokeObjectURL(entry.url);
-
-        return valid;
+        return {
+          id: crypto.randomUUID(),
+          path: entry.path,
+          name: basename(entry.path),
+          url: mediaUrl(entry.path),
+          kind,
+          frameTime: entry.frameTime ?? 0,
+          props: { ...NEUTRAL_PROPS, ...entry.props },
+        };
       });
+
+      setMedia(loaded);
       pendingRef.current.clear();
-      setSelectedId(valid[0]?.id ?? null);
+      setSelectedId(loaded[0]?.id ?? null);
     } catch (error) {
       console.error("load project failed:", error);
     }
@@ -367,7 +344,7 @@ export function App() {
             if (selectedMedia) resetMediaProp(selectedMedia.id, key);
           }}
           onUpdatePath={(nextPath) => {
-            if (selectedMedia) void updateMediaPath(selectedMedia.id, nextPath);
+            if (selectedMedia) updateMediaPath(selectedMedia.id, nextPath);
           }}
           onAddImages={() => {
             void handleAddMedia();

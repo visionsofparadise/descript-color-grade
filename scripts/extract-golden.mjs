@@ -2,11 +2,10 @@
 // from every calibration frame into a single JSON file that the
 // integration tests consume.
 //
-// Earlier revisions sampled only the gray row because the extracted
-// PNGs were decoded with BT.601 (ffmpeg's default for SD resolution),
-// which produced phantom deviations on saturated colors. The
-// accompanying scripts/extract-frames.mjs now forces BT.709 on the
-// ffmpeg scale filter so every patch — gray and color — is trustworthy.
+// Inputs: the tracked PNG stills in reference/, exported directly from
+// Descript at canonical slider values. To re-calibrate, replace those
+// PNGs with fresh exports and re-run this script; commit both the
+// updated PNGs and the regenerated descript-golden.json.
 
 import sharp from "sharp";
 import { readFile, readdir, writeFile } from "node:fs/promises";

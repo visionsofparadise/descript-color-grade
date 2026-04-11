@@ -3,18 +3,16 @@ import type {
   IpcHandlerParameters,
   IpcHandlerReturn,
 } from "../models/AsyncRendererIpc";
-import { PickMediaRendererIpc } from "./FileSystem/pickMedia/Renderer";
-import { PickOpenProjectRendererIpc } from "./FileSystem/pickOpenProject/Renderer";
-import { PickSaveProjectRendererIpc } from "./FileSystem/pickSaveProject/Renderer";
-import { ReadProjectFileRendererIpc } from "./FileSystem/readProjectFile/Renderer";
-import { WriteProjectFileRendererIpc } from "./FileSystem/writeProjectFile/Renderer";
+import { ReadFileRendererIpc } from "./FileSystem/readFile/Renderer";
+import { WriteFileRendererIpc } from "./FileSystem/writeFile/Renderer";
+import { ShowOpenDialogRendererIpc } from "./Dialog/showOpenDialog/Renderer";
+import { ShowSaveDialogRendererIpc } from "./Dialog/showSaveDialog/Renderer";
 
 export const ASYNC_RENDERER_IPCS = [
-  PickMediaRendererIpc,
-  PickOpenProjectRendererIpc,
-  PickSaveProjectRendererIpc,
-  ReadProjectFileRendererIpc,
-  WriteProjectFileRendererIpc,
+  ReadFileRendererIpc,
+  WriteFileRendererIpc,
+  ShowOpenDialogRendererIpc,
+  ShowSaveDialogRendererIpc,
 ] as const;
 
 type RendererIpcInstance = InstanceType<(typeof ASYNC_RENDERER_IPCS)[number]>;
