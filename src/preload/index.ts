@@ -1,2 +1,8 @@
-// See the Electron documentation for details on how to use preload scripts:
-// https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
+import { contextBridge, ipcRenderer } from "electron";
+import { ASYNC_RENDERER_IPCS } from "../shared/ipc/asyncRendererIpcs";
+
+const ipcHandlers = ASYNC_RENDERER_IPCS.map((Ipc) =>
+  new Ipc().register(ipcRenderer),
+);
+
+contextBridge.exposeInMainWorld("main", Object.fromEntries(ipcHandlers));
