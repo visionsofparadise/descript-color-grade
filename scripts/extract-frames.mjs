@@ -1,6 +1,15 @@
 // Extracts a single frame from every calibration MP4 in
-// descript-calibration/ and writes the PNG to
-// descript-calibration/frames/.
+// descript-calibration/ (a transient, gitignored input directory) and
+// writes the PNG to reference/.
+//
+// This script is dormant in the steady state — the calibration MP4s are
+// not tracked in the repo because they were a one-time export from
+// Descript and the canonical extracted PNGs live in reference/. To
+// re-run calibration: re-export MP4s from Descript at the canonical
+// slider values, drop them into descript-calibration/ at the repo root
+// (the directory is gitignored, create it if needed), then run this
+// script. The output PNGs will overwrite the tracked references in
+// reference/.
 //
 // Descript's MP4 exports carry metadata inconsistently — baseline.mp4
 // reports `color_range=tv, color_space=bt709`, but effect-adjusted
@@ -22,7 +31,7 @@ const execFileAsync = promisify(execFile);
 const here = dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = resolve(here, "..");
 const calibrationDir = resolve(workspaceRoot, "descript-calibration");
-const framesDir = resolve(calibrationDir, "frames");
+const framesDir = resolve(workspaceRoot, "reference");
 
 await mkdir(framesDir, { recursive: true });
 

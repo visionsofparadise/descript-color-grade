@@ -246,7 +246,7 @@ async function compareFrame(path, adj, label) {
   );
 }
 
-const framesDir = resolve(workspaceRoot, "descript-calibration/frames");
+const framesDir = resolve(workspaceRoot, "reference");
 
 console.log("==== PORT VERIFICATION AGAINST ALL CALIBRATION EXPORTS ====");
 console.log();

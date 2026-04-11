@@ -90,3 +90,6 @@ typings/
 
 # Electron-Forge
 out/
+
+# Calibration MP4 inputs (transient — re-imported from Descript only when re-running calibration extraction; PNG outputs live tracked in reference/)
+descript-calibration/

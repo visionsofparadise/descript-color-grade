@@ -16,7 +16,7 @@ import { dirname, resolve, basename } from "node:path";
 const here = dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = resolve(here, "..");
 const specPath = resolve(workspaceRoot, "calibration-spec.json");
-const framesDir = resolve(workspaceRoot, "descript-calibration/frames");
+const framesDir = resolve(workspaceRoot, "reference");
 const goldenPath = resolve(workspaceRoot, "descript-golden.json");
 
 const spec = JSON.parse(await readFile(specPath, "utf8"));

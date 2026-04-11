@@ -2,8 +2,8 @@
 // input→output RGB pairs so we can deduce the transfer functions.
 //
 // Usage: node scripts/sample-calibration.mjs
-// Reads from apps/color-grade/descript-calibration/frames/*.png
-// Uses apps/color-grade/calibration-spec.json for patch centers.
+// Reads from reference/*.png
+// Uses calibration-spec.json for patch centers.
 
 import sharp from "sharp";
 import { readFile, readdir } from "node:fs/promises";
@@ -13,7 +13,7 @@ import { dirname, resolve, basename } from "node:path";
 const here = dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = resolve(here, "..");
 const specPath = resolve(workspaceRoot, "calibration-spec.json");
-const framesDir = resolve(workspaceRoot, "descript-calibration/frames");
+const framesDir = resolve(workspaceRoot, "reference");
 
 const spec = JSON.parse(await readFile(specPath, "utf8"));
 
