@@ -10,7 +10,7 @@ import { dirname, resolve } from "node:path";
 const here = dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = resolve(here, "..");
 const spec = JSON.parse(
-  await readFile(resolve(workspaceRoot, "calibration-spec.json"), "utf8"),
+  await readFile(resolve(workspaceRoot, "reference", "calibration-spec.json"), "utf8"),
 );
 
 async function sample(path) {

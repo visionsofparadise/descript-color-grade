@@ -134,8 +134,8 @@ function buildSpec() {
 
 const here = dirname(fileURLToPath(import.meta.url));
 const outputRoot = resolve(here, "..");
-const imagePath = resolve(outputRoot, "calibration.png");
-const specPath = resolve(outputRoot, "calibration-spec.json");
+const imagePath = resolve(outputRoot, "reference", "calibration.png");
+const specPath = resolve(outputRoot, "reference", "calibration-spec.json");
 
 const raw = buildRawRgb();
 

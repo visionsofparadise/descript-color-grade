@@ -13,7 +13,7 @@
 // handful of YUV-quantization pixels of the simple models below.
 
 import { describe, it, expect } from "vitest";
-import goldenData from "../../../../../descript-golden.json";
+import goldenData from "../../../../../reference/descript-golden.json";
 import {
   buildUniforms,
   type DescriptGradeAdjustments,
