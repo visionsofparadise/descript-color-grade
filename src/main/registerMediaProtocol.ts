@@ -1,5 +1,6 @@
-import fs, { createReadStream } from "node:fs";
+import fs, { createReadStream, type ReadStream } from "node:fs";
 import path from "node:path";
+import { Readable } from "node:stream";
 import { protocol } from "electron";
 
 const MIME_TYPES: Record<string, string> = {
@@ -58,46 +59,66 @@ const parseRangeHeader = (
   return { start, end };
 };
 
+const toWebStream = (nodeStream: ReadStream): ReadableStream<Uint8Array> => {
+  // Swallow late "error" events (e.g. ERR_STREAM_PREMATURE_CLOSE) that fire
+  // after Chromium aborts a Range request during video seek. The abort
+  // propagates via the Web stream's cancel(), which destroys the Node
+  // stream — but Node still emits the error asynchronously. Without this
+  // listener, Node sees it as an unhandled "error" and logs noise.
+  nodeStream.on("error", () => {
+    // intentional: error already surfaced through the web stream cancel path
+  });
+  return Readable.toWeb(nodeStream) as ReadableStream<Uint8Array>;
+};
+
 export const registerMediaProtocol = (): void => {
   protocol.handle("media", async (request) => {
-    const url = new URL(request.url);
-    const filePath = parseMediaPath(url);
+    try {
+      const url = new URL(request.url);
+      const filePath = parseMediaPath(url);
 
-    const stat = await fs.promises.stat(filePath);
-    const fileSize = stat.size;
-    const contentType = getMimeType(filePath);
+      const stat = await fs.promises.stat(filePath);
+      const fileSize = stat.size;
+      const contentType = getMimeType(filePath);
 
-    const rangeHeader = request.headers.get("range");
+      const rangeHeader = request.headers.get("range");
 
-    if (rangeHeader !== null) {
-      const range = parseRangeHeader(rangeHeader, fileSize);
+      if (rangeHeader !== null) {
+        const range = parseRangeHeader(rangeHeader, fileSize);
 
-      if (range) {
-        const { start, end } = range;
-        const chunkSize = end - start + 1;
-        const stream = createReadStream(filePath, { start, end });
+        if (range) {
+          const { start, end } = range;
+          const chunkSize = end - start + 1;
+          const nodeStream = createReadStream(filePath, { start, end });
 
-        return new Response(stream as unknown as ReadableStream, {
-          status: 206,
-          headers: {
-            "Content-Type": contentType,
-            "Content-Length": String(chunkSize),
-            "Content-Range": `bytes ${start}-${end}/${fileSize}`,
-            "Accept-Ranges": "bytes",
-          },
-        });
+          return new Response(toWebStream(nodeStream), {
+            status: 206,
+            headers: {
+              "Content-Type": contentType,
+              "Content-Length": String(chunkSize),
+              "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+              "Accept-Ranges": "bytes",
+            },
+          });
+        }
       }
+
+      const nodeStream = createReadStream(filePath);
+
+      return new Response(toWebStream(nodeStream), {
+        status: 200,
+        headers: {
+          "Content-Type": contentType,
+          "Content-Length": String(fileSize),
+          "Accept-Ranges": "bytes",
+        },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return new Response(`Media protocol error: ${message}`, {
+        status: 500,
+        headers: { "Content-Type": "text/plain" },
+      });
     }
-
-    const stream = createReadStream(filePath);
-
-    return new Response(stream as unknown as ReadableStream, {
-      status: 200,
-      headers: {
-        "Content-Type": contentType,
-        "Content-Length": String(fileSize),
-        "Accept-Ranges": "bytes",
-      },
-    });
   });
 };

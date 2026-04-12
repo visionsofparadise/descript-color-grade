@@ -10,11 +10,14 @@ import {
   arrayMove,
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
+import { Eraser, ImagePlus, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type { LoadedMedia } from "./app";
-import { ImageCell } from "./ImageCell";
+import { Button } from "@/Components/UI/button";
+import type { LoadedMedia } from "../../App";
+import { Frame } from "./Frame";
+import { computeGridDimensions } from "./utils/computeGridDimensions";
 
-interface WorkspaceProps {
+interface FramesProps {
   media: Array<LoadedMedia>;
   selectedId: string | null;
   onSelect: (id: string) => void;
@@ -22,27 +25,12 @@ interface WorkspaceProps {
   onReorder: (nextMedia: Array<LoadedMedia>) => void;
   onUpdateFrameTime: (id: string, frameTime: number) => void;
   onVideoReady: (id: string, duration: number) => void;
+  onImportMedia: () => void;
+  onClearAllValues: () => void;
+  onClearAllFrames: () => void;
 }
 
-function computeGridDimensions(
-  count: number,
-  landscape: boolean,
-): { cols: number; rows: number } {
-  if (count <= 1) return { cols: 1, rows: 1 };
-
-  let cols = Math.ceil(Math.sqrt(count));
-  let rows = Math.ceil(count / cols);
-
-  // Standard packing yields cols >= rows. Transpose for portrait containers
-  // so the grid's long axis matches the workspace's long axis.
-  if (!landscape && cols > rows) {
-    [cols, rows] = [rows, cols];
-  }
-
-  return { cols, rows };
-}
-
-export function Workspace({
+export function Frames({
   media,
   selectedId,
   onSelect,
@@ -50,8 +38,11 @@ export function Workspace({
   onReorder,
   onUpdateFrameTime,
   onVideoReady,
-}: WorkspaceProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  onImportMedia,
+  onClearAllValues,
+  onClearAllFrames,
+}: FramesProps) {
+  const gridRef = useRef<HTMLDivElement>(null);
   const [landscape, setLandscape] = useState(true);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -71,7 +62,7 @@ export function Workspace({
   };
 
   useEffect(() => {
-    const container = containerRef.current;
+    const container = gridRef.current;
 
     if (!container) return;
 
@@ -92,52 +83,91 @@ export function Workspace({
     };
   }, []);
 
+  const hasMedia = media.length > 0;
   const { cols, rows } = computeGridDimensions(media.length, landscape);
 
   return (
-    <div ref={containerRef} className="h-full w-full">
-      {media.length === 0 ? (
-        <div className="h-full flex items-center justify-center">
-          <p className="text-neutral-300 text-sm tracking-wide">
-            Load images or videos to get started
-          </p>
-        </div>
-      ) : (
-        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-          <SortableContext
-            items={media.map((entry) => entry.id)}
-            strategy={rectSortingStrategy}
+    <div className="h-full w-full flex flex-col bg-neutral-900">
+      <div className="flex shrink-0 items-center justify-between gap-2 px-3 py-2 bg-neutral-950 border-b border-neutral-800">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onImportMedia}
+          className="text-neutral-200 hover:text-neutral-100"
+        >
+          <ImagePlus aria-hidden="true" />
+          Import Media
+        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onClearAllValues}
+            disabled={!hasMedia}
+            className="text-neutral-400 hover:text-neutral-100"
           >
-            <div
-              className="grid h-full"
-              style={{
-                gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-                gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
-              }}
+            <Eraser aria-hidden="true" />
+            Clear All Values
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onClearAllFrames}
+            disabled={!hasMedia}
+            className="text-neutral-400 hover:text-neutral-100"
+          >
+            <Trash2 aria-hidden="true" />
+            Clear All Frames
+          </Button>
+        </div>
+      </div>
+      <div ref={gridRef} className="flex-1 min-h-0">
+        {hasMedia ? (
+          <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+            <SortableContext
+              items={media.map((entry) => entry.id)}
+              strategy={rectSortingStrategy}
             >
-              {media.map((entry) => (
-                <ImageCell
-                  key={entry.id}
-                  image={entry}
-                  selected={entry.id === selectedId}
-                  onSelect={() => {
-                    onSelect(entry.id);
-                  }}
-                  onRemove={() => {
-                    onRemove(entry.id);
-                  }}
-                  onUpdateFrameTime={(frameTime) => {
-                    onUpdateFrameTime(entry.id, frameTime);
-                  }}
-                  onVideoReady={(duration) => {
-                    onVideoReady(entry.id, duration);
-                  }}
-                />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
-      )}
+              <div
+                className="grid h-full"
+                style={{
+                  gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+                  gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
+                }}
+              >
+                {media.map((entry) => (
+                  <Frame
+                    key={entry.id}
+                    image={entry}
+                    selected={entry.id === selectedId}
+                    onSelect={() => {
+                      onSelect(entry.id);
+                    }}
+                    onRemove={() => {
+                      onRemove(entry.id);
+                    }}
+                    onUpdateFrameTime={(frameTime) => {
+                      onUpdateFrameTime(entry.id, frameTime);
+                    }}
+                    onVideoReady={(duration) => {
+                      onVideoReady(entry.id, duration);
+                    }}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        ) : (
+          <div className="h-full flex items-center justify-center">
+            <p className="text-neutral-400 text-sm tracking-wide">
+              Load images or videos to get started
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

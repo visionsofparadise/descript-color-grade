@@ -1,12 +1,15 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { X } from "lucide-react";
-import type { CSSProperties, MouseEvent } from "react";
-import { Button } from "@/components/ui/button";
-import type { LoadedMedia } from "./app";
+import { Maximize2, Minimize2, X } from "lucide-react";
+import { useState, type CSSProperties, type MouseEvent } from "react";
+import { Button } from "@/Components/UI/button";
+import type { LoadedMedia } from "../../App";
+import { FrameScrub } from "./FrameScrub";
 import { GradedCanvas } from "./GradedCanvas";
 
-interface ImageCellProps {
+type FitMode = "contain" | "cover";
+
+interface FrameProps {
   image: LoadedMedia;
   selected: boolean;
   onSelect: () => void;
@@ -15,14 +18,15 @@ interface ImageCellProps {
   onVideoReady: (duration: number) => void;
 }
 
-export function ImageCell({
+export function Frame({
   image,
   selected,
   onSelect,
   onRemove,
   onUpdateFrameTime,
   onVideoReady,
-}: ImageCellProps) {
+}: FrameProps) {
+  const [fit, setFit] = useState<FitMode>("cover");
   const {
     attributes,
     listeners,
@@ -43,6 +47,17 @@ export function ImageCell({
     event.stopPropagation();
     onRemove();
   };
+
+  const handleToggleFit = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    setFit((current) => (current === "contain" ? "cover" : "contain"));
+  };
+
+  const FitIcon = fit === "contain" ? Maximize2 : Minimize2;
+  const fitLabel =
+    fit === "contain"
+      ? `Fill frame with ${image.name}`
+      : `Fit ${image.name} inside frame`;
 
   return (
     <div
@@ -79,8 +94,23 @@ export function ImageCell({
           tint={image.props.tint / 100}
           highlights={image.props.highlights / 100}
           shadows={image.props.shadows / 100}
-          className="absolute inset-0 w-full h-full object-contain"
+          fit={fit}
+          className="absolute inset-0 w-full h-full"
         />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          onClick={handleToggleFit}
+          onPointerDown={(event) => {
+            event.stopPropagation();
+          }}
+          aria-label={fitLabel}
+          title={fitLabel}
+          className="absolute top-2 left-2 bg-black/70 text-neutral-100 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-black/90"
+        >
+          <FitIcon aria-hidden="true" />
+        </Button>
         <Button
           type="button"
           variant="ghost"
@@ -90,31 +120,19 @@ export function ImageCell({
             event.stopPropagation();
           }}
           aria-label={`Remove ${image.name}`}
-          className="absolute top-2 right-2 rounded-full bg-black/70 text-neutral-100 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-black/90"
+          className="absolute top-2 right-2 bg-black/70 text-neutral-100 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-black/90"
         >
           <X aria-hidden="true" />
         </Button>
+        {image.kind === "video" && image.duration !== undefined ? (
+          <FrameScrub
+            name={image.name}
+            duration={image.duration}
+            frameTime={image.frameTime}
+            onChange={onUpdateFrameTime}
+          />
+        ) : null}
       </div>
-      {image.kind === "video" && image.duration !== undefined ? (
-        <input
-          type="range"
-          min={0}
-          max={image.duration}
-          step={1 / 30}
-          value={image.frameTime}
-          onChange={(event) => {
-            onUpdateFrameTime(Number(event.target.value));
-          }}
-          onPointerDown={(event) => {
-            event.stopPropagation();
-          }}
-          onClick={(event) => {
-            event.stopPropagation();
-          }}
-          aria-label={`Scrub ${image.name}`}
-          className="w-full accent-sky-500 mt-1"
-        />
-      ) : null}
       <p
         className={`text-xs truncate flex-shrink-0 w-full px-2 py-1 transition-colors ${
           selected

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { buildUniforms } from "./grade-uniforms";
+import { buildUniforms } from "./utils/grade-uniforms";
 import {
   createGradeProgram,
   createTexture,
@@ -7,7 +7,7 @@ import {
   drawGrade,
   uploadTexture,
   type GradeProgram,
-} from "./grade-webgl";
+} from "./utils/grade-webgl";
 
 // A canvas that renders an image or a video frame through Descript's
 // ColorAdjustment shader. Owns its own WebGL context and handles both
@@ -43,6 +43,9 @@ interface GradedCanvasProps {
   /** Fired once the video metadata has loaded, reporting duration
    *  in seconds. Used by the parent to configure the scrub slider. */
   onVideoReady?: (duration: number) => void;
+  /** "contain" fits the source inside the wrapper (letterboxed);
+   *  "cover" fills the wrapper (cropped). Defaults to "cover". */
+  fit?: "contain" | "cover";
   className?: string;
 }
 
@@ -59,6 +62,7 @@ export function GradedCanvas({
   shadows,
   frameTime,
   onVideoReady,
+  fit = "cover",
   className,
 }: GradedCanvasProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -73,6 +77,16 @@ export function GradedCanvas({
   const lastCanvasSizeRef = useRef<{ width: number; height: number } | null>(
     null,
   );
+  // `fit` is read by `resizeCanvas`, which is called from a
+  // ResizeObserver registered once at mount. Closing over the prop
+  // would freeze the value; keep it in a ref updated every render so
+  // the observer callback always sees the current mode. The write is
+  // inside a deps-less effect to satisfy the react-hooks/refs rule
+  // (ref writes must happen outside render).
+  const fitRef = useRef(fit);
+  useEffect(() => {
+    fitRef.current = fit;
+  });
 
   // Draws the current source (image or video frame) through the shader
   // with the current adjustments. Safe to call whenever — no-ops if
@@ -126,9 +140,10 @@ export function GradedCanvas({
   };
 
   // Resizes the canvas to match the wrapper's visible rect at full
-  // device pixel density, with object-contain aspect-ratio math. Safe
-  // to call whenever; it's a no-op if the source aspect ratio isn't
-  // known yet (still loading).
+  // device pixel density. In "contain" mode the canvas fits inside the
+  // wrapper (letterboxed); in "cover" mode it fills the wrapper with
+  // overflow cropped by the wrapper's `overflow: hidden`. Safe to call
+  // whenever; it's a no-op if the source aspect ratio isn't known yet.
   const resizeCanvas = (): void => {
     const wrapper = wrapperRef.current;
     const canvas = canvasRef.current;
@@ -141,38 +156,57 @@ export function GradedCanvas({
 
     const rect = wrapper.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
-    const wrapperPhysicalW = rect.width * dpr;
-    const wrapperPhysicalH = rect.height * dpr;
+    const wrapperCssW = rect.width;
+    const wrapperCssH = rect.height;
 
-    if (wrapperPhysicalW <= 0 || wrapperPhysicalH <= 0) return;
+    if (wrapperCssW <= 0 || wrapperCssH <= 0) return;
 
-    const wrapperAspect = wrapperPhysicalW / wrapperPhysicalH;
+    const wrapperAspect = wrapperCssW / wrapperCssH;
 
-    let targetW: number;
-    let targetH: number;
+    // In CSS pixels: the layout size the canvas should occupy.
+    let cssW: number;
+    let cssH: number;
 
-    if (sourceAspect > wrapperAspect) {
-      targetW = wrapperPhysicalW;
-      targetH = wrapperPhysicalW / sourceAspect;
+    const sourceWiderThanWrapper = sourceAspect > wrapperAspect;
+    const currentFit = fitRef.current;
+
+    if (currentFit === "contain") {
+      if (sourceWiderThanWrapper) {
+        cssW = wrapperCssW;
+        cssH = wrapperCssW / sourceAspect;
+      } else {
+        cssH = wrapperCssH;
+        cssW = wrapperCssH * sourceAspect;
+      }
     } else {
-      targetH = wrapperPhysicalH;
-      targetW = wrapperPhysicalH * sourceAspect;
+      // cover: fill the wrapper on the constrained axis; overflow on the other
+      if (sourceWiderThanWrapper) {
+        cssH = wrapperCssH;
+        cssW = wrapperCssH * sourceAspect;
+      } else {
+        cssW = wrapperCssW;
+        cssH = wrapperCssW / sourceAspect;
+      }
     }
 
-    const finalW = Math.max(1, Math.round(targetW));
-    const finalH = Math.max(1, Math.round(targetH));
+    const bufW = Math.max(1, Math.round(cssW * dpr));
+    const bufH = Math.max(1, Math.round(cssH * dpr));
 
     const last = lastCanvasSizeRef.current;
 
-    if (last !== null && last.width === finalW && last.height === finalH) {
+    if (last !== null && last.width === bufW && last.height === bufH) {
+      canvas.style.width = `${cssW}px`;
+      canvas.style.height = `${cssH}px`;
       return;
     }
 
-    lastCanvasSizeRef.current = { width: finalW, height: finalH };
+    lastCanvasSizeRef.current = { width: bufW, height: bufH };
 
-    canvas.width = finalW;
-    canvas.height = finalH;
-    gl.viewport(0, 0, finalW, finalH);
+    canvas.width = bufW;
+    canvas.height = bufH;
+    canvas.style.width = `${cssW}px`;
+    canvas.style.height = `${cssH}px`;
+    gl.viewport(0, 0, bufW, bufH);
 
     render();
   };
@@ -338,6 +372,15 @@ export function GradedCanvas({
     render();
   }, [exposure, contrast, saturation, temperature, tint, highlights, shadows]);
 
+  // Re-run the layout math when the fit mode changes. Invalidates the
+  // size cache so the new aspect calculation always applies even if
+  // the buffer happens to match in one direction.
+  useEffect(() => {
+    lastCanvasSizeRef.current = null;
+    resizeCanvas();
+
+  }, [fit]);
+
   return (
     <div
       ref={wrapperRef}
@@ -346,13 +389,14 @@ export function GradedCanvas({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
+        overflow: "hidden",
       }}
     >
       <canvas
         ref={canvasRef}
         aria-label={alt}
         role="img"
-        style={{ maxWidth: "100%", maxHeight: "100%" }}
+        style={{ flexShrink: 0 }}
       />
     </div>
   );

@@ -1,8 +1,8 @@
 import { RotateCcw } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Slider } from "@/components/ui/slider";
+import { Button } from "@/Components/UI/button";
+import { Input } from "@/Components/UI/input";
+import { Slider } from "@/Components/UI/slider";
 
 interface SliderRowProps {
   label: string;
@@ -65,7 +65,17 @@ export function SliderRow({ label, value, onChange, onReset }: SliderRowProps) {
           }}
           onBlur={commit}
           onKeyDown={(event) => {
-            if (event.key === "Enter") event.currentTarget.blur();
+            if (event.key === "Enter") {
+              event.currentTarget.blur();
+              return;
+            }
+            if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+              event.preventDefault();
+              const delta = event.key === "ArrowUp" ? 1 : -1;
+              const next = clamp(value + delta, MIN, MAX);
+              setDraft(String(next));
+              if (next !== value) onChange(next);
+            }
           }}
           className="w-14 h-7 px-1 py-0.5 text-xs text-right"
         />

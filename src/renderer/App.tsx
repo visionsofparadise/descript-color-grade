@@ -1,13 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  mediaUrl,
-  readFile,
-  showOpenDialog,
-  showSaveDialog,
-  writeFile,
-} from "./fs-api";
-import { Sidebar } from "./Sidebar";
-import { Workspace } from "./Workspace";
+import { useCallback, useState } from "react";
+import { Frames } from "./Components/Frames";
+import { Sidebar } from "./Components/Sidebar";
+import { Titlebar } from "./Components/Titlebar";
+import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import { useRafBatch } from "./hooks/useRafBatch";
+import { basename } from "./utils/basename";
+import { importMedia } from "./utils/importMedia";
+import { detectKind, mediaUrl, type MediaKind } from "./utils/media";
+import { loadProject, saveProject } from "./utils/projectFile";
 
 export interface GradeProps {
   exposure: number;
@@ -19,7 +19,7 @@ export interface GradeProps {
   shadows: number;
 }
 
-export type MediaKind = "image" | "video";
+export type { MediaKind };
 
 export interface LoadedMedia {
   id: string;
@@ -47,136 +47,52 @@ export const NEUTRAL_PROPS: GradeProps = {
   shadows: 0,
 };
 
-const VIDEO_EXTENSIONS = new Set([
-  ".mp4",
-  ".mov",
-  ".webm",
-  ".mkv",
-  ".avi",
-  ".m4v",
-]);
-
-function detectKind(path: string): MediaKind {
-  const normalized = path.toLowerCase();
-  const dotPos = normalized.lastIndexOf(".");
-
-  if (dotPos === -1) return "image";
-
-  return VIDEO_EXTENSIONS.has(normalized.slice(dotPos)) ? "video" : "image";
-}
-
-interface ProjectFileEntry {
-  path: string;
-  kind?: MediaKind;
-  frameTime?: number;
-  props: GradeProps;
-}
-
-interface ProjectFile {
-  version: 1;
-  media: Array<ProjectFileEntry>;
-}
-
-function basename(absolutePath: string): string {
-  const normalized = absolutePath.replace(/\\/g, "/");
-  const slashPos = normalized.lastIndexOf("/");
-
-  return slashPos === -1 ? normalized : normalized.slice(slashPos + 1);
-}
-
-function loadMediaFromPath(path: string): LoadedMedia {
-  return {
-    id: crypto.randomUUID(),
-    path,
-    name: basename(path),
-    url: mediaUrl(path),
-    kind: detectKind(path),
-    frameTime: 0,
-    props: { ...NEUTRAL_PROPS },
-  };
-}
-
 export function App() {
   const [media, setMedia] = useState<Array<LoadedMedia>>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const pendingRef = useRef(new Map<string, GradeProps>());
-  const rafRef = useRef<number | null>(null);
 
-  useEffect(
-    () => () => {
-      if (rafRef.current !== null) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
+  const flushPending = useCallback((updates: Map<string, GradeProps>) => {
+    setMedia((prev) =>
+      prev.map((entry) => {
+        const pending = updates.get(entry.id);
 
-      pendingRef.current.clear();
-    },
-    [],
-  );
-
-  const addMediaByPaths = useCallback((paths: Array<string>) => {
-    if (paths.length === 0) return;
-
-    const loaded = paths.map(loadMediaFromPath);
-    const firstId = loaded[0]?.id;
-
-    setMedia((prev) => [...prev, ...loaded]);
-    setSelectedId((prev) => prev ?? firstId ?? null);
+        return pending ? { ...entry, props: pending } : entry;
+      }),
+    );
   }, []);
+  const rafBatch = useRafBatch(flushPending);
 
-  const handleAddMedia = useCallback(async () => {
+  const handleImportMedia = useCallback(async () => {
     try {
-      const paths = await showOpenDialog({
-        title: "Select media",
-        properties: ["openFile", "multiSelections"],
-        filters: [
-          {
-            name: "Media",
-            extensions: [
-              "png", "jpg", "jpeg", "webp", "bmp", "gif",
-              "mp4", "mov", "webm", "mkv", "avi", "m4v",
-            ],
-          },
-          { name: "Images", extensions: ["png", "jpg", "jpeg", "webp", "bmp", "gif"] },
-          { name: "Videos", extensions: ["mp4", "mov", "webm", "mkv", "avi", "m4v"] },
-          { name: "All files", extensions: ["*"] },
-        ],
-      });
-      if (paths === undefined) return;
-      addMediaByPaths(paths);
+      const loaded = await importMedia();
+      if (loaded.length === 0) return;
+      const firstId = loaded[0]?.id;
+      setMedia((prev) => [...prev, ...loaded]);
+      setSelectedId((prev) => prev ?? firstId ?? null);
     } catch (error) {
-      console.error("add media failed:", error);
+      console.error("import media failed:", error);
     }
-  }, [addMediaByPaths]);
-
-  const removeMedia = useCallback((id: string) => {
-    setMedia((prev) => prev.filter((entry) => entry.id !== id));
-    setSelectedId((prev) => (prev === id ? null : prev));
-    pendingRef.current.delete(id);
   }, []);
+
+  const removeMedia = useCallback(
+    (id: string) => {
+      setMedia((prev) => prev.filter((entry) => entry.id !== id));
+      setSelectedId((prev) => (prev === id ? null : prev));
+      rafBatch.drop(id);
+    },
+    [rafBatch],
+  );
 
   const selectMedia = useCallback((id: string) => {
     setSelectedId(id);
   }, []);
 
-  const updateProps = useCallback((id: string, next: GradeProps) => {
-    pendingRef.current.set(id, next);
-
-    if (rafRef.current !== null) return;
-
-    rafRef.current = requestAnimationFrame(() => {
-      rafRef.current = null;
-      const updates = pendingRef.current;
-      pendingRef.current = new Map();
-      setMedia((prev) =>
-        prev.map((entry) => {
-          const pending = updates.get(entry.id);
-
-          return pending ? { ...entry, props: pending } : entry;
-        }),
-      );
-    });
-  }, []);
+  const updateProps = useCallback(
+    (id: string, next: GradeProps) => {
+      rafBatch.queue(id, next);
+    },
+    [rafBatch],
+  );
 
   const resetMediaProp = useCallback((id: string, key: keyof GradeProps) => {
     setMedia((prev) =>
@@ -188,12 +104,30 @@ export function App() {
     );
   }, []);
 
-  const resetAllProps = useCallback(() => {
-    pendingRef.current.clear();
+  const resetMediaAllProps = useCallback(
+    (id: string) => {
+      rafBatch.drop(id);
+      setMedia((prev) =>
+        prev.map((entry) =>
+          entry.id === id ? { ...entry, props: { ...NEUTRAL_PROPS } } : entry,
+        ),
+      );
+    },
+    [rafBatch],
+  );
+
+  const clearAllValues = useCallback(() => {
+    rafBatch.clear();
     setMedia((prev) =>
       prev.map((entry) => ({ ...entry, props: { ...NEUTRAL_PROPS } })),
     );
-  }, []);
+  }, [rafBatch]);
+
+  const clearAllFrames = useCallback(() => {
+    rafBatch.clear();
+    setMedia(() => []);
+    setSelectedId(null);
+  }, [rafBatch]);
 
   const reorderMedia = useCallback((nextMedia: Array<LoadedMedia>) => {
     setMedia(nextMedia);
@@ -233,84 +167,40 @@ export function App() {
     );
   }, []);
 
-  const saveProject = useCallback(async () => {
+  const handleSaveProject = useCallback(async () => {
     try {
-      const savePath = await showSaveDialog({
-        title: "Save project",
-        defaultPath: "project.dcg",
-        filters: [
-          { name: "Descript Color Grade Project", extensions: ["dcg"] },
-        ],
-      });
-      if (savePath === undefined) return;
-
-      const payload: ProjectFile = {
-        version: 1,
-        media: media.map((entry) => ({
-          path: entry.path,
-          kind: entry.kind,
-          frameTime: entry.kind === "video" ? entry.frameTime : undefined,
-          props: entry.props,
-        })),
-      };
-
-      await writeFile(savePath, JSON.stringify(payload, null, 2));
+      await saveProject(media);
     } catch (error) {
       console.error("save project failed:", error);
     }
   }, [media]);
 
-  const loadProject = useCallback(async () => {
+  const handleLoadProject = useCallback(async () => {
     try {
-      const paths = await showOpenDialog({
-        title: "Open project",
-        properties: ["openFile"],
-        filters: [
-          { name: "Descript Color Grade Project", extensions: ["dcg"] },
-        ],
-      });
-      const openPath = paths?.[0];
-      if (openPath === undefined) return;
-
-      const text = await readFile(openPath);
-      const parsed: unknown = JSON.parse(text);
-
-      if (
-        typeof parsed !== "object" ||
-        parsed === null ||
-        !Array.isArray((parsed as { media?: unknown }).media)
-      ) {
-        throw new Error("invalid project file");
-      }
-
-      const version = (parsed as { version?: unknown }).version;
-
-      if (version !== 1) {
-        throw new Error("unsupported project file version");
-      }
-
-      const entries = (parsed as ProjectFile).media;
-      const loaded: Array<LoadedMedia> = entries.map((entry) => {
-        const kind = entry.kind ?? detectKind(entry.path);
-
-        return {
-          id: crypto.randomUUID(),
-          path: entry.path,
-          name: basename(entry.path),
-          url: mediaUrl(entry.path),
-          kind,
-          frameTime: entry.frameTime ?? 0,
-          props: { ...NEUTRAL_PROPS, ...entry.props },
-        };
-      });
-
-      setMedia(loaded);
-      pendingRef.current.clear();
+      const loaded = await loadProject();
+      if (loaded === undefined) return;
+      setMedia(() => loaded);
+      rafBatch.clear();
       setSelectedId(loaded[0]?.id ?? null);
     } catch (error) {
       console.error("load project failed:", error);
     }
+  }, [rafBatch]);
+
+  const handleNewProject = clearAllFrames;
+
+  const handleCloseWindow = useCallback(() => {
+    window.close();
   }, []);
+
+  useKeyboardShortcuts([
+    { key: "n", ctrl: true, handler: handleNewProject },
+    { key: "o", ctrl: true, handler: () => { void handleLoadProject(); } },
+    { key: "s", ctrl: true, handler: () => { void handleSaveProject(); } },
+    { key: "s", ctrl: true, shift: true, handler: () => { void handleSaveProject(); } },
+    { key: "i", ctrl: true, handler: () => { void handleImportMedia(); } },
+    { key: "w", ctrl: true, handler: handleCloseWindow },
+  ]);
 
   const selectedMedia =
     selectedId === null
@@ -319,13 +209,18 @@ export function App() {
 
   return (
     <div className="h-screen flex flex-col bg-neutral-950 text-neutral-100">
-      <div className="titlebar flex h-11 shrink-0">
-        <div className="flex-1 bg-neutral-500" />
-        <div className="w-72 bg-neutral-950 border-l border-neutral-800" />
-      </div>
+      <Titlebar
+        onNewProject={handleNewProject}
+        onOpenProject={() => { void handleLoadProject(); }}
+        onSaveProject={() => { void handleSaveProject(); }}
+        onSaveProjectAs={() => { void handleSaveProject(); }}
+        onImportMedia={() => { void handleImportMedia(); }}
+        onClearAllValues={clearAllValues}
+        onCloseWindow={handleCloseWindow}
+      />
       <div className="flex-1 min-h-0 flex">
         <main className="flex-1 min-w-0 bg-neutral-500">
-          <Workspace
+          <Frames
             media={media}
             selectedId={selectedId}
             onSelect={selectMedia}
@@ -333,6 +228,9 @@ export function App() {
             onReorder={reorderMedia}
             onUpdateFrameTime={updateFrameTime}
             onVideoReady={setMediaDuration}
+            onImportMedia={() => { void handleImportMedia(); }}
+            onClearAllValues={clearAllValues}
+            onClearAllFrames={clearAllFrames}
           />
         </main>
         <Sidebar
@@ -343,19 +241,12 @@ export function App() {
           onResetProp={(key) => {
             if (selectedMedia) resetMediaProp(selectedMedia.id, key);
           }}
+          onResetAllProps={() => {
+            if (selectedMedia) resetMediaAllProps(selectedMedia.id);
+          }}
           onUpdatePath={(nextPath) => {
             if (selectedMedia) updateMediaPath(selectedMedia.id, nextPath);
           }}
-          onAddImages={() => {
-            void handleAddMedia();
-          }}
-          onSaveProject={() => {
-            void saveProject();
-          }}
-          onLoadProject={() => {
-            void loadProject();
-          }}
-          onResetAll={resetAllProps}
         />
       </div>
     </div>

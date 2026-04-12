@@ -23,7 +23,7 @@ const createMainWindow = (): BrowserWindow => {
     minHeight: 600,
     titleBarStyle: "hidden",
     titleBarOverlay: {
-      color: "#121418",
+      color: "#0a0a0a",
       symbolColor: "#e0e5ed",
       height: 44,
     },
