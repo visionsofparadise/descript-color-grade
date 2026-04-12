@@ -1,9 +1,9 @@
 import type {
   ShowOpenDialogOptions,
-} from "../shared/ipc/Dialog/showOpenDialog/Renderer";
+} from "../../shared/ipc/Dialog/showOpenDialog/Renderer";
 import type {
   ShowSaveDialogOptions,
-} from "../shared/ipc/Dialog/showSaveDialog/Renderer";
+} from "../../shared/ipc/Dialog/showSaveDialog/Renderer";
 
 export async function readFile(filePath: string): Promise<string> {
   return window.main.readFile(filePath);
@@ -26,8 +26,4 @@ export async function showSaveDialog(
   options: ShowSaveDialogOptions,
 ): Promise<string | undefined> {
   return window.main.showSaveDialog(options);
-}
-
-export function mediaUrl(absolutePath: string): string {
-  return `media:///${absolutePath.replace(/\\/g, "/")}`;
 }
