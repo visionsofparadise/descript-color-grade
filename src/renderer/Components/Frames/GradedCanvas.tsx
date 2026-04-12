@@ -88,6 +88,36 @@ export function GradedCanvas({
     fitRef.current = fit;
   });
 
+  // Uniform values are read by `render()`, which is called from
+  // several non-reactive sites: the ResizeObserver callback, the
+  // `seeked` handler registered inside the `[src, kind]` effect, and
+  // the `image.onload` handler in that same effect. Each of those
+  // captures a `render` closure from the render cycle where its
+  // effect last ran — typically from the initial load, when all
+  // sliders were zero. Without the ref, seeking a video frame after
+  // the user has tuned sliders re-draws with the stale zero uniforms
+  // and the frame looks ungraded until the next slider tick.
+  const uniformsRef = useRef({
+    exposure,
+    contrast,
+    saturation,
+    temperature,
+    tint,
+    highlights,
+    shadows,
+  });
+  useEffect(() => {
+    uniformsRef.current = {
+      exposure,
+      contrast,
+      saturation,
+      temperature,
+      tint,
+      highlights,
+      shadows,
+    };
+  });
+
   // Draws the current source (image or video frame) through the shader
   // with the current adjustments. Safe to call whenever — no-ops if
   // the source isn't ready yet.
@@ -100,20 +130,7 @@ export function GradedCanvas({
 
     if (!sourceReadyRef.current) return;
 
-    drawGrade(
-      gl,
-      program,
-      texture,
-      buildUniforms({
-        exposure,
-        contrast,
-        saturation,
-        temperature,
-        tint,
-        highlights,
-        shadows,
-      }),
-    );
+    drawGrade(gl, program, texture, buildUniforms(uniformsRef.current));
   };
 
   // Uploads the current source content into the GPU texture. For

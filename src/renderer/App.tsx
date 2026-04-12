@@ -7,7 +7,11 @@ import { useRafBatch } from "./hooks/useRafBatch";
 import { basename } from "./utils/basename";
 import { importMedia } from "./utils/importMedia";
 import { detectKind, mediaUrl, type MediaKind } from "./utils/media";
-import { loadProject, saveProject } from "./utils/projectFile";
+import {
+  loadProject,
+  saveProjectAs,
+  saveProjectToPath,
+} from "./utils/projectFile";
 
 export interface GradeProps {
   exposure: number;
@@ -50,6 +54,13 @@ export const NEUTRAL_PROPS: GradeProps = {
 export function App() {
   const [media, setMedia] = useState<Array<LoadedMedia>>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Path of the currently-open project file, if any. Set by
+  // `handleLoadProject` after a successful open, and by
+  // `handleSaveProjectAs` after a successful save-as. Cleared by
+  // `handleNewProject`. When non-null, `handleSaveProject` writes to
+  // this path silently; when null, it falls through to the save
+  // dialog and adopts the chosen path.
+  const [projectPath, setProjectPath] = useState<string | null>(null);
 
   const flushPending = useCallback((updates: Map<string, GradeProps>) => {
     setMedia((prev) =>
@@ -127,6 +138,7 @@ export function App() {
     rafBatch.clear();
     setMedia(() => []);
     setSelectedId(null);
+    setProjectPath(null);
   }, [rafBatch]);
 
   const reorderMedia = useCallback((nextMedia: Array<LoadedMedia>) => {
@@ -169,19 +181,34 @@ export function App() {
 
   const handleSaveProject = useCallback(async () => {
     try {
-      await saveProject(media);
+      if (projectPath !== null) {
+        await saveProjectToPath(media, projectPath);
+        return;
+      }
+      const chosen = await saveProjectAs(media);
+      if (chosen !== undefined) setProjectPath(chosen);
     } catch (error) {
       console.error("save project failed:", error);
     }
-  }, [media]);
+  }, [media, projectPath]);
+
+  const handleSaveProjectAs = useCallback(async () => {
+    try {
+      const chosen = await saveProjectAs(media, projectPath ?? undefined);
+      if (chosen !== undefined) setProjectPath(chosen);
+    } catch (error) {
+      console.error("save project as failed:", error);
+    }
+  }, [media, projectPath]);
 
   const handleLoadProject = useCallback(async () => {
     try {
       const loaded = await loadProject();
       if (loaded === undefined) return;
-      setMedia(() => loaded);
+      setMedia(() => loaded.media);
       rafBatch.clear();
-      setSelectedId(loaded[0]?.id ?? null);
+      setSelectedId(loaded.media[0]?.id ?? null);
+      setProjectPath(loaded.path);
     } catch (error) {
       console.error("load project failed:", error);
     }
@@ -197,7 +224,7 @@ export function App() {
     { key: "n", ctrl: true, handler: handleNewProject },
     { key: "o", ctrl: true, handler: () => { void handleLoadProject(); } },
     { key: "s", ctrl: true, handler: () => { void handleSaveProject(); } },
-    { key: "s", ctrl: true, shift: true, handler: () => { void handleSaveProject(); } },
+    { key: "s", ctrl: true, shift: true, handler: () => { void handleSaveProjectAs(); } },
     { key: "i", ctrl: true, handler: () => { void handleImportMedia(); } },
     { key: "w", ctrl: true, handler: handleCloseWindow },
   ]);
@@ -213,7 +240,7 @@ export function App() {
         onNewProject={handleNewProject}
         onOpenProject={() => { void handleLoadProject(); }}
         onSaveProject={() => { void handleSaveProject(); }}
-        onSaveProjectAs={() => { void handleSaveProject(); }}
+        onSaveProjectAs={() => { void handleSaveProjectAs(); }}
         onImportMedia={() => { void handleImportMedia(); }}
         onClearAllValues={clearAllValues}
         onCloseWindow={handleCloseWindow}

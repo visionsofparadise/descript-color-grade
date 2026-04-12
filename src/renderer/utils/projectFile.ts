@@ -16,18 +16,16 @@ interface ProjectFile {
   media: Array<ProjectFileEntry>;
 }
 
-export async function saveProject(
-  media: ReadonlyArray<LoadedMedia>,
-): Promise<void> {
-  const savePath = await showSaveDialog({
-    title: "Save session",
-    defaultPath: "session.dcg",
-    filters: [
-      { name: "Descript Color Grade Session", extensions: ["dcg"] },
-    ],
-  });
-  if (savePath === undefined) return;
+export interface LoadedProject {
+  media: Array<LoadedMedia>;
+  path: string;
+}
 
+const PROJECT_FILTER = [
+  { name: "Descript Color Grade Project", extensions: ["dcg"] },
+];
+
+function serializeProject(media: ReadonlyArray<LoadedMedia>): string {
   const payload: ProjectFile = {
     version: 1,
     media: media.map((entry) => ({
@@ -37,19 +35,46 @@ export async function saveProject(
       props: entry.props,
     })),
   };
-
-  await writeFile(savePath, JSON.stringify(payload, null, 2));
+  return JSON.stringify(payload, null, 2);
 }
 
-export async function loadProject(): Promise<
-  Array<LoadedMedia> | undefined
-> {
+/**
+ * Write the project to `path` without prompting. Used by the "Save"
+ * menu item once a project has an associated file (from Open or from
+ * a previous Save As).
+ */
+export async function saveProjectToPath(
+  media: ReadonlyArray<LoadedMedia>,
+  path: string,
+): Promise<void> {
+  await writeFile(path, serializeProject(media));
+}
+
+/**
+ * Prompt for a path via the native save dialog, write the project,
+ * and return the chosen path (or `undefined` if the user canceled).
+ * Used by "Save As" and by "Save" when no current path is known yet.
+ */
+export async function saveProjectAs(
+  media: ReadonlyArray<LoadedMedia>,
+  defaultPath?: string,
+): Promise<string | undefined> {
+  const savePath = await showSaveDialog({
+    title: "Save project",
+    defaultPath: defaultPath ?? "project.dcg",
+    filters: PROJECT_FILTER,
+  });
+  if (savePath === undefined) return undefined;
+
+  await writeFile(savePath, serializeProject(media));
+  return savePath;
+}
+
+export async function loadProject(): Promise<LoadedProject | undefined> {
   const paths = await showOpenDialog({
-    title: "Open session",
+    title: "Open project",
     properties: ["openFile"],
-    filters: [
-      { name: "Descript Color Grade Session", extensions: ["dcg"] },
-    ],
+    filters: PROJECT_FILTER,
   });
   const openPath = paths?.[0];
   if (openPath === undefined) return undefined;
@@ -71,7 +96,7 @@ export async function loadProject(): Promise<
   }
 
   const entries = (parsed as ProjectFile).media;
-  return entries.map((entry) => {
+  const media = entries.map((entry) => {
     const kind = entry.kind ?? detectKind(entry.path);
     return {
       id: crypto.randomUUID(),
@@ -83,4 +108,6 @@ export async function loadProject(): Promise<
       props: { ...NEUTRAL_PROPS, ...entry.props },
     };
   });
+
+  return { media, path: openPath };
 }
