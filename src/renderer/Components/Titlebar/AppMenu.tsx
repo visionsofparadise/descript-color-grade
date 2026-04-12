@@ -9,6 +9,7 @@ export type AppMenuEntry =
       icon: React.ComponentType<{ className?: string }>;
       shortcut: string;
       onSelect: () => void;
+      disabled?: boolean;
     };
 
 interface AppMenuProps {
@@ -58,19 +59,37 @@ export function AppMenu({ items }: AppMenuProps) {
               );
             }
             const Icon = entry.icon;
+            const disabled = entry.disabled === true;
             return (
               <button
                 key={entry.label}
                 type="button"
+                disabled={disabled}
                 onClick={() => {
                   setOpen(false);
                   entry.onSelect();
                 }}
-                className="w-full flex items-center gap-3 px-4 py-2 text-neutral-100 hover:bg-neutral-800 focus-visible:outline-none focus-visible:bg-neutral-800"
+                className={
+                  disabled
+                    ? "w-full flex items-center gap-3 px-4 py-2 text-neutral-600 cursor-default focus-visible:outline-none"
+                    : "w-full flex items-center gap-3 px-4 py-2 text-neutral-100 hover:bg-neutral-800 focus-visible:outline-none focus-visible:bg-neutral-800"
+                }
               >
-                <Icon className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+                <Icon
+                  className={
+                    disabled
+                      ? "w-3.5 h-3.5 text-neutral-700 shrink-0"
+                      : "w-3.5 h-3.5 text-neutral-400 shrink-0"
+                  }
+                />
                 <span className="flex-1 text-left text-sm">{entry.label}</span>
-                <span className="font-mono text-[11px] text-neutral-500 shrink-0">
+                <span
+                  className={
+                    disabled
+                      ? "font-mono text-[11px] text-neutral-700 shrink-0"
+                      : "font-mono text-[11px] text-neutral-500 shrink-0"
+                  }
+                >
                   {entry.shortcut}
                 </span>
               </button>

@@ -12,36 +12,27 @@ import {
 } from "@dnd-kit/sortable";
 import { Eraser, ImagePlus, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useSnapshot } from "valtio";
 import { Button } from "@/Components/UI/button";
-import type { LoadedMedia } from "../../App";
+import type { AppContext } from "@/models/Context";
 import { Frame } from "./Frame";
 import { computeGridDimensions } from "./utils/computeGridDimensions";
 
 interface FramesProps {
-  media: Array<LoadedMedia>;
-  selectedId: string | null;
-  onSelect: (id: string) => void;
-  onRemove: (id: string) => void;
-  onReorder: (nextMedia: Array<LoadedMedia>) => void;
-  onUpdateFrameTime: (id: string, frameTime: number) => void;
-  onVideoReady: (id: string, duration: number) => void;
+  context: AppContext;
   onImportMedia: () => void;
   onClearAllValues: () => void;
   onClearAllFrames: () => void;
 }
 
 export function Frames({
-  media,
-  selectedId,
-  onSelect,
-  onRemove,
-  onReorder,
-  onUpdateFrameTime,
-  onVideoReady,
+  context,
   onImportMedia,
   onClearAllValues,
   onClearAllFrames,
 }: FramesProps) {
+  const project = useSnapshot(context.project);
+  const media = project.media;
   const gridRef = useRef<HTMLDivElement>(null);
   const [landscape, setLandscape] = useState(true);
   const sensors = useSensors(
@@ -50,7 +41,6 @@ export function Frames({
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-
     if (!over || active.id === over.id) return;
 
     const oldIndex = media.findIndex((entry) => entry.id === active.id);
@@ -58,21 +48,20 @@ export function Frames({
 
     if (oldIndex < 0 || newIndex < 0) return;
 
-    onReorder(arrayMove(media, oldIndex, newIndex));
+    context.history.mutate(context.project, (draft) => {
+      draft.media = arrayMove(draft.media, oldIndex, newIndex);
+    });
   };
 
   useEffect(() => {
     const container = gridRef.current;
-
     if (!container) return;
 
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
-
       if (!entry) return;
 
       const { width, height } = entry.contentRect;
-
       setLandscape(width >= height);
     });
 
@@ -141,20 +130,8 @@ export function Frames({
                 {media.map((entry) => (
                   <Frame
                     key={entry.id}
-                    image={entry}
-                    selected={entry.id === selectedId}
-                    onSelect={() => {
-                      onSelect(entry.id);
-                    }}
-                    onRemove={() => {
-                      onRemove(entry.id);
-                    }}
-                    onUpdateFrameTime={(frameTime) => {
-                      onUpdateFrameTime(entry.id, frameTime);
-                    }}
-                    onVideoReady={(duration) => {
-                      onVideoReady(entry.id, duration);
-                    }}
+                    context={context}
+                    mediaId={entry.id}
                   />
                 ))}
               </div>

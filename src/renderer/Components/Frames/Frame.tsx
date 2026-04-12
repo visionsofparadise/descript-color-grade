@@ -2,31 +2,30 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Maximize2, Minimize2, X } from "lucide-react";
 import { useState, type CSSProperties, type MouseEvent } from "react";
+import { useSnapshot } from "valtio";
 import { Button } from "@/Components/UI/button";
-import type { LoadedMedia } from "../../App";
+import type { AppContext } from "@/models/Context";
+import { basename } from "@/utils/basename";
+import { detectKind, mediaUrl } from "@/utils/media";
 import { FrameScrub } from "./FrameScrub";
 import { GradedCanvas } from "./GradedCanvas";
 
 type FitMode = "contain" | "cover";
 
 interface FrameProps {
-  image: LoadedMedia;
-  selected: boolean;
-  onSelect: () => void;
-  onRemove: () => void;
-  onUpdateFrameTime: (frameTime: number) => void;
-  onVideoReady: (duration: number) => void;
+  context: AppContext;
+  mediaId: string;
 }
 
-export function Frame({
-  image,
-  selected,
-  onSelect,
-  onRemove,
-  onUpdateFrameTime,
-  onVideoReady,
-}: FrameProps) {
+export function Frame({ context, mediaId }: FrameProps) {
+  const project = useSnapshot(context.project);
+  const entry = project.media.find((item) => item.id === mediaId);
+  // Fit mode is a per-cell display preference, not part of the grade. Local
+  // state only — never persisted, never on the proxy.
   const [fit, setFit] = useState<FitMode>("cover");
+  // Runtime-only metadata — arrives from the <video> element's loadedmetadata
+  // event via `onVideoReady`. Not on the proxy; re-derived on remount.
+  const [duration, setDuration] = useState<number | undefined>(undefined);
   const {
     attributes,
     listeners,
@@ -34,7 +33,17 @@ export function Frame({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: image.id });
+  } = useSortable({ id: mediaId });
+
+  // Guard against a mid-render removal. If the entry is gone (e.g. a history
+  // undo removed this cell), render nothing and let the parent's next render
+  // omit this Frame entirely.
+  if (entry === undefined) return null;
+
+  const selected = project.selectedId === mediaId;
+  const name = basename(entry.path);
+  const url = mediaUrl(entry.path);
+  const kind = detectKind(entry.path);
 
   const sortableStyle: CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -43,9 +52,24 @@ export function Frame({
     zIndex: isDragging ? 10 : undefined,
   };
 
-  const handleRemoveClick = (event: MouseEvent<HTMLButtonElement>) => {
+  const handleSelect = () => {
+    // Selection is excluded from history — use store.mutate, not
+    // history.mutate. See design-state.md → Scope of Undoable State.
+    context.store.mutate(context.project, (draft) => {
+      draft.selectedId = mediaId;
+    });
+  };
+
+  const handleRemove = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
-    onRemove();
+    // Removal AND selection clearing go into one history entry so undo
+    // restores both atomically. Selection-on-history is a deliberate
+    // exception when the change coincides with a media mutation.
+    context.history.mutate(context.project, (draft) => {
+      const removedIndex = draft.media.findIndex((item) => item.id === mediaId);
+      if (removedIndex >= 0) draft.media.splice(removedIndex, 1);
+      if (draft.selectedId === mediaId) draft.selectedId = null;
+    });
   };
 
   const handleToggleFit = (event: MouseEvent<HTMLButtonElement>) => {
@@ -55,9 +79,7 @@ export function Frame({
 
   const FitIcon = fit === "contain" ? Maximize2 : Minimize2;
   const fitLabel =
-    fit === "contain"
-      ? `Fill frame with ${image.name}`
-      : `Fit ${image.name} inside frame`;
+    fit === "contain" ? `Fill frame with ${name}` : `Fit ${name} inside frame`;
 
   return (
     <div
@@ -70,30 +92,30 @@ export function Frame({
         {...listeners}
         role="button"
         tabIndex={0}
-        aria-label={`Select ${image.name}`}
+        aria-label={`Select ${name}`}
         aria-pressed={selected}
-        onClick={onSelect}
+        onClick={handleSelect}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
-            onSelect();
+            handleSelect();
           }
         }}
         className="relative flex-1 min-h-0 overflow-hidden cursor-grab active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-100 touch-none"
       >
         <GradedCanvas
-          src={image.url}
-          alt={image.name}
-          kind={image.kind}
-          frameTime={image.frameTime}
-          onVideoReady={onVideoReady}
-          exposure={image.props.exposure / 100}
-          contrast={image.props.contrast / 100}
-          saturation={image.props.saturation / 100}
-          temperature={image.props.temperature / 100}
-          tint={image.props.tint / 100}
-          highlights={image.props.highlights / 100}
-          shadows={image.props.shadows / 100}
+          src={url}
+          alt={name}
+          kind={kind}
+          frameTime={entry.frameTime}
+          onVideoReady={setDuration}
+          exposure={entry.props.exposure / 100}
+          contrast={entry.props.contrast / 100}
+          saturation={entry.props.saturation / 100}
+          temperature={entry.props.temperature / 100}
+          tint={entry.props.tint / 100}
+          highlights={entry.props.highlights / 100}
+          shadows={entry.props.shadows / 100}
           fit={fit}
           className="absolute inset-0 w-full h-full"
         />
@@ -115,21 +137,22 @@ export function Frame({
           type="button"
           variant="ghost"
           size="icon-sm"
-          onClick={handleRemoveClick}
+          onClick={handleRemove}
           onPointerDown={(event) => {
             event.stopPropagation();
           }}
-          aria-label={`Remove ${image.name}`}
+          aria-label={`Remove ${name}`}
           className="absolute top-2 right-2 bg-black/70 text-neutral-100 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-black/90"
         >
           <X aria-hidden="true" />
         </Button>
-        {image.kind === "video" && image.duration !== undefined ? (
+        {kind === "video" && duration !== undefined ? (
           <FrameScrub
-            name={image.name}
-            duration={image.duration}
-            frameTime={image.frameTime}
-            onChange={onUpdateFrameTime}
+            context={context}
+            mediaId={mediaId}
+            name={name}
+            duration={duration}
+            frameTime={entry.frameTime}
           />
         ) : null}
       </div>
@@ -140,7 +163,7 @@ export function Frame({
             : "bg-neutral-900 text-neutral-400"
         }`}
       >
-        {image.name}
+        {name}
       </p>
     </div>
   );

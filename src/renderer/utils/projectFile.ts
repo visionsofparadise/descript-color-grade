@@ -1,8 +1,11 @@
-import type { GradeProps, LoadedMedia, MediaKind } from "../App";
-import { NEUTRAL_PROPS } from "../App";
-import { basename } from "./basename";
+import type {
+  GradeProps,
+  MediaEntry,
+  MediaKind,
+} from "../models/State/Project";
+import { NEUTRAL_PROPS } from "../models/State/Project";
 import { readFile, showOpenDialog, showSaveDialog, writeFile } from "./fs";
-import { detectKind, mediaUrl } from "./media";
+import { detectKind } from "./media";
 
 interface ProjectFileEntry {
   path: string;
@@ -17,7 +20,7 @@ interface ProjectFile {
 }
 
 export interface LoadedProject {
-  media: Array<LoadedMedia>;
+  media: Array<MediaEntry>;
   path: string;
 }
 
@@ -25,14 +28,14 @@ const PROJECT_FILTER = [
   { name: "Descript Color Grade Project", extensions: ["dcg"] },
 ];
 
-function serializeProject(media: ReadonlyArray<LoadedMedia>): string {
+function serializeProject(media: ReadonlyArray<MediaEntry>): string {
   const payload: ProjectFile = {
     version: 1,
     media: media.map((entry) => ({
       path: entry.path,
       kind: entry.kind,
       frameTime: entry.kind === "video" ? entry.frameTime : undefined,
-      props: entry.props,
+      props: { ...entry.props },
     })),
   };
   return JSON.stringify(payload, null, 2);
@@ -44,7 +47,7 @@ function serializeProject(media: ReadonlyArray<LoadedMedia>): string {
  * a previous Save As).
  */
 export async function saveProjectToPath(
-  media: ReadonlyArray<LoadedMedia>,
+  media: ReadonlyArray<MediaEntry>,
   path: string,
 ): Promise<void> {
   await writeFile(path, serializeProject(media));
@@ -56,7 +59,7 @@ export async function saveProjectToPath(
  * Used by "Save As" and by "Save" when no current path is known yet.
  */
 export async function saveProjectAs(
-  media: ReadonlyArray<LoadedMedia>,
+  media: ReadonlyArray<MediaEntry>,
   defaultPath?: string,
 ): Promise<string | undefined> {
   const savePath = await showSaveDialog({
@@ -96,18 +99,13 @@ export async function loadProject(): Promise<LoadedProject | undefined> {
   }
 
   const entries = (parsed as ProjectFile).media;
-  const media = entries.map((entry) => {
-    const kind = entry.kind ?? detectKind(entry.path);
-    return {
-      id: crypto.randomUUID(),
-      path: entry.path,
-      name: basename(entry.path),
-      url: mediaUrl(entry.path),
-      kind,
-      frameTime: entry.frameTime ?? 0,
-      props: { ...NEUTRAL_PROPS, ...entry.props },
-    };
-  });
+  const media: Array<MediaEntry> = entries.map((entry) => ({
+    id: crypto.randomUUID(),
+    path: entry.path,
+    kind: entry.kind ?? detectKind(entry.path),
+    frameTime: entry.frameTime ?? 0,
+    props: { ...NEUTRAL_PROPS, ...entry.props },
+  }));
 
   return { media, path: openPath };
 }

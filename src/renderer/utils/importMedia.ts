@@ -1,10 +1,9 @@
-import type { LoadedMedia } from "../App";
-import { NEUTRAL_PROPS } from "../App";
-import { basename } from "./basename";
+import type { MediaEntry } from "../models/State/Project";
+import { NEUTRAL_PROPS } from "../models/State/Project";
 import { showOpenDialog } from "./fs";
-import { detectKind, mediaUrl } from "./media";
+import { detectKind } from "./media";
 
-export async function importMedia(): Promise<Array<LoadedMedia>> {
+export async function importMedia(): Promise<Array<MediaEntry>> {
   const paths = await showOpenDialog({
     title: "Import media",
     properties: ["openFile", "multiSelections"],
@@ -26,8 +25,6 @@ export async function importMedia(): Promise<Array<LoadedMedia>> {
   return paths.map((path) => ({
     id: crypto.randomUUID(),
     path,
-    name: basename(path),
-    url: mediaUrl(path),
     kind: detectKind(path),
     frameTime: 0,
     props: { ...NEUTRAL_PROPS },

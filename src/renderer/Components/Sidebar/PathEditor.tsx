@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { Input } from "@/Components/UI/input";
+import type { AppContext } from "@/models/Context";
 
 interface PathEditorProps {
+  context: AppContext;
+  entryIndex: number;
   path: string;
-  onCommit: (nextPath: string) => void;
 }
 
-export function PathEditor({ path, onCommit }: PathEditorProps) {
+export function PathEditor({ context, entryIndex, path }: PathEditorProps) {
   const [draft, setDraft] = useState(path);
 
   useEffect(() => {
@@ -19,7 +21,18 @@ export function PathEditor({ path, onCommit }: PathEditorProps) {
       setDraft(path);
       return;
     }
-    onCommit(trimmed);
+    // Write the new path and clear `frameTime` back to 0 in one mutate callback
+    // so a single undo entry restores both. `kind` is derived from `path` at
+    // read time (not stored), so no explicit kind update is needed. `duration`
+    // is runtime-only inside Frame and will re-derive when the <video> element
+    // reloads against the new path.
+    context.history.mutate(context.project, (draft) => {
+      const target = draft.media[entryIndex];
+      if (target) {
+        target.path = trimmed;
+        target.frameTime = 0;
+      }
+    });
   };
 
   return (
