@@ -1,6 +1,5 @@
 import { app, BrowserWindow, protocol } from "electron";
 import path from "node:path";
-import started from "electron-squirrel-startup";
 import { ASYNC_MAIN_IPCS } from "../shared/ipc/asyncMainIpcs";
 import {
   MEDIA_SCHEME_CONFIG,
@@ -8,8 +7,11 @@ import {
 } from "./registerMediaProtocol";
 import { getContentSecurityPolicy } from "./getContentSecurityPolicy";
 
-// Handle creating/removing shortcuts on Windows when installing/uninstalling.
-if (started) {
+// Handle Squirrel install/update/uninstall events on Windows.
+if (process.argv.includes("--squirrel-install") ||
+    process.argv.includes("--squirrel-updated") ||
+    process.argv.includes("--squirrel-uninstall") ||
+    process.argv.includes("--squirrel-obsolete")) {
   app.quit();
 }
 
