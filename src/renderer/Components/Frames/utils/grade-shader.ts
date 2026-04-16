@@ -1,4 +1,4 @@
-// GLSL source for Descript's `com.descript.colorAdjustments` effect.
+// GLSL source for Descript's current color pipeline.
 //
 // The `FRAGMENT_SOURCE` below is a direct copy of the
 // `ColorAdjustment` + `ColorAdjustment_adjustLighting` functions
@@ -10,7 +10,9 @@
 // between `vec4 ColorAdjustment_adjustLighting(...)` and the closing
 // brace of `vec4 ColorAdjustment(...)` is Descript's code unmodified,
 // including the non-normalized `vec3(0.3, 0.3, 0.3)` luminance weights
-// and the magic constants 0.76 / 0.8.
+// and the magic constants 0.76 / 0.8. The `WhiteBalance(...)` function
+// is likewise copied verbatim from the current bundle so upgraded
+// projects can route temperature/tint through the same pre-stage.
 
 export const VERTEX_SOURCE = `
 attribute vec2 aPosition;
@@ -31,10 +33,40 @@ uniform vec4 uColorVector;
 uniform vec4 uColorOffset;
 uniform float uHighlights;
 uniform float uShadows;
+uniform float uWhiteBalanceEnabled;
+uniform float uWhiteBalanceTemperature;
+uniform float uWhiteBalanceTint;
+uniform vec3 uWhiteBalanceFilter;
 
 varying vec2 vTexCoord;
 
 // ----- begin verbatim Descript source -----
+
+vec4 WhiteBalance(vec4 source, float temperature, float tint, vec3 whiteBalanceFilter) {
+  vec3 warmFilter = whiteBalanceFilter;
+  mat3 RGBtoYIQ = mat3(
+    0.299, 0.587, 0.114,
+    0.596, -0.274, -0.322,
+    0.212, -0.523, 0.311
+  );
+  mat3 YIQtoRGB = mat3(
+    1.0, 0.956, 0.621,
+    1.0, -0.272, -0.647,
+    1.0, -1.105, 1.702
+  );
+
+  vec3 yiq = RGBtoYIQ * source.rgb;
+  yiq.b = clamp(yiq.b + tint * 0.5226 * 0.1, -0.5226, 0.5226);
+  vec3 rgb = YIQtoRGB * yiq;
+
+  vec3 processed = vec3(
+    (rgb.r < 0.5 ? (2.0 * rgb.r * warmFilter.r) : (1.0 - 2.0 * (1.0 - rgb.r) * (1.0 - warmFilter.r))),
+    (rgb.g < 0.5 ? (2.0 * rgb.g * warmFilter.g) : (1.0 - 2.0 * (1.0 - rgb.g) * (1.0 - warmFilter.g))),
+    (rgb.b < 0.5 ? (2.0 * rgb.b * warmFilter.b) : (1.0 - 2.0 * (1.0 - rgb.b) * (1.0 - warmFilter.b)))
+  );
+  vec3 color = mix(rgb, processed, temperature);
+  return vec4(color, source.a);
+}
 
 vec4 ColorAdjustment_adjustLighting(vec4 source, float highlights, float shadows)
 {
@@ -78,6 +110,16 @@ vec4 ColorAdjustment(vec4 source, mat4 colorMatrix, vec4 colorVector, vec4 color
 
 void main() {
   vec4 source = texture2D(uSource, vTexCoord);
+
+  if (uWhiteBalanceEnabled > 0.5) {
+    source = WhiteBalance(
+      source,
+      uWhiteBalanceTemperature,
+      uWhiteBalanceTint,
+      uWhiteBalanceFilter
+    );
+  }
+
   gl_FragColor = ColorAdjustment(
     source,
     uColorMatrix,

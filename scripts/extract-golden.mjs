@@ -2,10 +2,10 @@
 // from every calibration frame into a single JSON file that the
 // integration tests consume.
 //
-// Inputs: the tracked PNG stills in reference/, exported directly from
-// Descript at canonical slider values. To re-calibrate, replace those
-// PNGs with fresh exports and re-run this script; commit both the
-// updated PNGs and the regenerated descript-golden.json.
+// Inputs: the tracked PNG stills in reference/stills/, exported
+// directly from Descript at canonical slider values. To re-calibrate,
+// replace those PNGs with fresh exports and re-run this script; commit
+// both the updated PNGs and the regenerated descript-golden.json.
 
 import sharp from "sharp";
 import { readFile, readdir, writeFile } from "node:fs/promises";
@@ -14,9 +14,9 @@ import { dirname, resolve, basename } from "node:path";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = resolve(here, "..");
-const specPath = resolve(workspaceRoot, "reference", "calibration-spec.json");
-const framesDir = resolve(workspaceRoot, "reference");
-const goldenPath = resolve(workspaceRoot, "reference", "descript-golden.json");
+const specPath = resolve(workspaceRoot, "reference", "stills", "calibration-spec.json");
+const framesDir = resolve(workspaceRoot, "reference", "stills");
+const goldenPath = resolve(workspaceRoot, "reference", "stills", "descript-golden.json");
 
 const spec = JSON.parse(await readFile(specPath, "utf8"));
 const grayPatches = spec.patches.filter((p) => p.row === 0);

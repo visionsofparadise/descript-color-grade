@@ -10,7 +10,7 @@ import { dirname, resolve } from "node:path";
 const here = dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = resolve(here, "..");
 const spec = JSON.parse(
-  await readFile(resolve(workspaceRoot, "reference", "calibration-spec.json"), "utf8"),
+  await readFile(resolve(workspaceRoot, "reference", "stills", "calibration-spec.json"), "utf8"),
 );
 
 async function sample(path) {
@@ -246,7 +246,7 @@ async function compareFrame(path, adj, label) {
   );
 }
 
-const framesDir = resolve(workspaceRoot, "reference");
+const framesDir = resolve(workspaceRoot, "reference", "stills");
 
 console.log("==== PORT VERIFICATION AGAINST ALL CALIBRATION EXPORTS ====");
 console.log();

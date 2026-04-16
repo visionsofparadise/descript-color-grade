@@ -11,10 +11,15 @@ const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
     executableName: 'descript-color-grade',
+    icon: './assets/icon',
   },
   rebuildConfig: {},
   makers: [
-    new MakerSquirrel({}),
+    new MakerSquirrel({
+      setupIcon: './assets/icon.ico',
+      iconUrl:
+        'https://raw.githubusercontent.com/visionsofparadise/descript-color-grade/main/assets/icon.ico',
+    }),
     new MakerZIP({}, ['darwin']),
     new MakerRpm({}),
     new MakerDeb({}),

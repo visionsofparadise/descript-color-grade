@@ -1,7 +1,7 @@
 {
   "name": "descript-color-grade",
   "productName": "Descript Color Grade",
-  "version": "1.0.3",
+  "version": "1.1.1",
   "description": "Bit-exact Descript color grade preview for podcast grading",
   "main": ".vite/build/main.js",
   "private": true,
@@ -64,6 +64,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "electron-squirrel-startup": "^1.0.1",
     "lucide-react": "^1.8.0",
     "radix-ui": "^1.4.3",
     "react": "^19.2.5",

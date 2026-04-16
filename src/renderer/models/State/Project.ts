@@ -17,6 +17,8 @@ import type { State } from ".";
 // rationale.
 
 export type MediaKind = "image" | "video";
+export type DescriptColorModel = "legacy" | "upgraded";
+export type VideoTreatment = "raw-source" | "descript-optimized";
 
 export interface GradeProps {
   exposure: number;
@@ -38,6 +40,9 @@ export const NEUTRAL_PROPS: GradeProps = {
   shadows: 0,
 };
 
+export const DEFAULT_COLOR_MODEL: DescriptColorModel = "upgraded";
+export const DEFAULT_VIDEO_TREATMENT: VideoTreatment = "descript-optimized";
+
 export interface MediaEntry {
   id: string;
   path: string;
@@ -49,6 +54,8 @@ export interface MediaEntry {
 
 export interface Project extends State {
   media: Array<MediaEntry>;
+  colorModel: DescriptColorModel;
+  videoTreatment: VideoTreatment;
   /**
    * Id of the currently-selected media entry. Excluded from history (see
    * design-state.md → Scope of Undoable State) and excluded from `.dcg`

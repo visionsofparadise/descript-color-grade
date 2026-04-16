@@ -1,9 +1,15 @@
 import type {
+  DescriptColorModel,
   GradeProps,
   MediaEntry,
   MediaKind,
+  VideoTreatment,
 } from "../models/State/Project";
-import { NEUTRAL_PROPS } from "../models/State/Project";
+import {
+  DEFAULT_COLOR_MODEL,
+  DEFAULT_VIDEO_TREATMENT,
+  NEUTRAL_PROPS,
+} from "../models/State/Project";
 import { readFile, showOpenDialog, showSaveDialog, writeFile } from "./fs";
 import { detectKind } from "./media";
 
@@ -15,12 +21,16 @@ interface ProjectFileEntry {
 }
 
 interface ProjectFile {
-  version: 1;
+  version: 2;
   media: Array<ProjectFileEntry>;
+  colorModel?: DescriptColorModel;
+  videoTreatment?: VideoTreatment;
 }
 
 export interface LoadedProject {
   media: Array<MediaEntry>;
+  colorModel: DescriptColorModel;
+  videoTreatment: VideoTreatment;
   path: string;
 }
 
@@ -28,9 +38,15 @@ const PROJECT_FILTER = [
   { name: "Descript Color Grade Project", extensions: ["dcg"] },
 ];
 
-function serializeProject(media: ReadonlyArray<MediaEntry>): string {
+function serializeProject(
+  media: ReadonlyArray<MediaEntry>,
+  colorModel: DescriptColorModel,
+  videoTreatment: VideoTreatment,
+): string {
   const payload: ProjectFile = {
-    version: 1,
+    version: 2,
+    colorModel,
+    videoTreatment,
     media: media.map((entry) => ({
       path: entry.path,
       kind: entry.kind,
@@ -48,9 +64,11 @@ function serializeProject(media: ReadonlyArray<MediaEntry>): string {
  */
 export async function saveProjectToPath(
   media: ReadonlyArray<MediaEntry>,
+  colorModel: DescriptColorModel,
+  videoTreatment: VideoTreatment,
   path: string,
 ): Promise<void> {
-  await writeFile(path, serializeProject(media));
+  await writeFile(path, serializeProject(media, colorModel, videoTreatment));
 }
 
 /**
@@ -60,6 +78,8 @@ export async function saveProjectToPath(
  */
 export async function saveProjectAs(
   media: ReadonlyArray<MediaEntry>,
+  colorModel: DescriptColorModel,
+  videoTreatment: VideoTreatment,
   defaultPath?: string,
 ): Promise<string | undefined> {
   const savePath = await showSaveDialog({
@@ -69,7 +89,10 @@ export async function saveProjectAs(
   });
   if (savePath === undefined) return undefined;
 
-  await writeFile(savePath, serializeProject(media));
+  await writeFile(
+    savePath,
+    serializeProject(media, colorModel, videoTreatment),
+  );
   return savePath;
 }
 
@@ -94,7 +117,7 @@ export async function loadProject(): Promise<LoadedProject | undefined> {
   }
 
   const version = (parsed as { version?: unknown }).version;
-  if (version !== 1) {
+  if (version !== 1 && version !== 2) {
     throw new Error("unsupported project file version");
   }
 
@@ -107,5 +130,14 @@ export async function loadProject(): Promise<LoadedProject | undefined> {
     props: { ...NEUTRAL_PROPS, ...entry.props },
   }));
 
-  return { media, path: openPath };
+  const colorModel =
+    (parsed as { colorModel?: unknown }).colorModel === "legacy"
+      ? "legacy"
+      : DEFAULT_COLOR_MODEL;
+  const videoTreatment =
+    (parsed as { videoTreatment?: unknown }).videoTreatment === "raw-source"
+      ? "raw-source"
+      : DEFAULT_VIDEO_TREATMENT;
+
+  return { media, colorModel, videoTreatment, path: openPath };
 }

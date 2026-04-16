@@ -1,9 +1,18 @@
-// Verbatim port of Descript's `com.descript.colorAdjustments` uniform
+// Verbatim port of the shared `com.descript.colorAdjustments` uniform
 // binder (the JS side that builds the shader's `colorMatrix`,
 // `colorVector`, `colorOffset`, `highlights`, `shadows` uniforms from
-// the seven-slider input). Both the runtime WebGL path and the test
-// helper import from this file so there's one source of truth for
-// the slider → uniform mapping.
+// the sliders we currently expose). Both the runtime WebGL path and
+// the test helper import from this file so there's one source of truth
+// for the slider → uniform mapping.
+//
+// Important 2026-04 finding: current Descript projects persist a
+// 10-parameter `com.descript.colorAdjustments` schema
+// (Exposure/Contrast/Highlights/Shadows/Black point/Saturation/
+// Vibrancy/Temperature/Tint/Temperature mode). For the shared sliders
+// this still feeds the long-lived inline ColorAdjustment binder; the
+// separate WhiteBalance shader exists in the bundle but is not the
+// path written by the current Temperature/Tint sliders for the clip we
+// traced.
 //
 // Extracted from the Descript renderer bundle on Windows at
 // `%LocalAppData%\Descript\Partitions\descript2\Cache\Cache_Data\f_09e4ea`,
@@ -57,6 +66,16 @@ export type Mat4 = [
 ];
 
 export type Vec4 = [number, number, number, number];
+export type Vec3 = [number, number, number];
+
+export type DescriptColorModel = "legacy" | "upgraded";
+
+export interface WhiteBalanceUniforms {
+  enabled: boolean;
+  temperature: number;
+  tint: number;
+  filter: Vec3;
+}
 
 export interface ColorAdjustmentUniforms {
   colorMatrix: Mat4;
@@ -65,6 +84,18 @@ export interface ColorAdjustmentUniforms {
   highlights: number;
   shadows: number;
 }
+
+export interface GradePipelineUniforms extends ColorAdjustmentUniforms {
+  whiteBalance: WhiteBalanceUniforms;
+}
+
+export interface BuildUniformOptions {
+  colorModel?: DescriptColorModel;
+}
+
+// Descript's extracted WhiteBalance shader matches the long-lived GPUImage
+// implementation, whose fixed warm filter is `vec3(0.93, 0.54, 0.0)`.
+export const DEFAULT_WHITE_BALANCE_FILTER: Vec3 = [0.93, 0.54, 0];
 
 export function clamp(value: number, lo: number, hi: number): number {
   return value < lo ? lo : value > hi ? hi : value;
@@ -208,27 +239,16 @@ function multiplyMat4(left: Mat4, right: Mat4): Mat4 {
 }
 /* eslint-enable @typescript-eslint/no-non-null-assertion */
 
-export function buildUniforms(
-  adjustments: DescriptGradeAdjustments,
+function buildColorAdjustmentUniforms(
+  adjustments: Required<DescriptGradeAdjustments>,
 ): ColorAdjustmentUniforms {
-  const adj: Required<DescriptGradeAdjustments> = {
-    exposure: adjustments.exposure ?? 0,
-    contrast: adjustments.contrast ?? 0,
-    saturation: adjustments.saturation ?? 0,
-    temperature: adjustments.temperature ?? 0,
-    tint: adjustments.tint ?? 0,
-    highlights: adjustments.highlights ?? 0,
-    shadows: adjustments.shadows ?? 0,
-    temperatureMode: adjustments.temperatureMode ?? "linear",
-  };
-
   let matrix: Mat4 = identityMat4();
   let vector: Vec4 = [1, 1, 1, 1];
   let offset: Vec4 = [0, 0, 0, 0];
 
   // Exposure — matrix *= diag(1+e, 1+e, 1+e, 1)
   {
-    const exposureValue = adj.exposure;
+    const exposureValue = adjustments.exposure;
     const exposureMat: Mat4 = [
       [1 + exposureValue, 0, 0, 0],
       [0, 1 + exposureValue, 0, 0],
@@ -241,7 +261,7 @@ export function buildUniforms(
 
   // Contrast (vector) — vector *= [1+c, 1+c, 1+c, 1]
   {
-    const contrastValue = adj.contrast;
+    const contrastValue = adjustments.contrast;
 
     vector = [
       vector[0] * (1 + contrastValue),
@@ -255,7 +275,7 @@ export function buildUniforms(
   // Descript writes this as `0.5*(1-(1+c))` which simplifies to
   // `-0.5*c`. Preserved as the source spells it so future diffs line up.
   {
-    const contrastValue = adj.contrast;
+    const contrastValue = adjustments.contrast;
     const contrastOffset = 0.5 * (1 - (1 + contrastValue));
 
     offset = [
@@ -268,7 +288,7 @@ export function buildUniforms(
 
   // Saturation — matrix *= BT.709 luma-preserving mat4
   {
-    const saturationValue = adj.saturation;
+    const saturationValue = adjustments.saturation;
     const satR = 1 + saturationValue;
     const satO = 0.2126 * (1 - satR);
     const satA = 0.7152 * (1 - satR);
@@ -285,10 +305,10 @@ export function buildUniforms(
 
   // Temperature — Linear or Helland mode.
   {
-    const temperatureValue = adj.temperature;
+    const temperatureValue = adjustments.temperature;
 
     if (temperatureValue !== 0) {
-      if (adj.temperatureMode === "helland") {
+      if (adjustments.temperatureMode === "helland") {
         vector = hellandTemperature(vector, temperatureValue);
       } else {
         vector = linearTemperature(vector, temperatureValue);
@@ -298,7 +318,7 @@ export function buildUniforms(
 
   // Tint — vector.g *= 1 - 0.5*t
   {
-    const tintValue = adj.tint;
+    const tintValue = adjustments.tint;
 
     if (tintValue !== 0) {
       const tintG = 1 - 0.5 * tintValue;
@@ -313,7 +333,33 @@ export function buildUniforms(
     colorOffset: offset,
     // Descript passes `UI_value + 1` so slider 0 becomes neutral 1.0
     // at the shader and the slider range [-1, 1] maps to [0, 2].
-    highlights: adj.highlights + 1,
-    shadows: adj.shadows + 1,
+    highlights: adjustments.highlights + 1,
+    shadows: adjustments.shadows + 1,
+  };
+}
+
+export function buildUniforms(
+  adjustments: DescriptGradeAdjustments,
+  _options: BuildUniformOptions = {},
+): GradePipelineUniforms {
+  const adj: Required<DescriptGradeAdjustments> = {
+    exposure: adjustments.exposure ?? 0,
+    contrast: adjustments.contrast ?? 0,
+    saturation: adjustments.saturation ?? 0,
+    temperature: adjustments.temperature ?? 0,
+    tint: adjustments.tint ?? 0,
+    highlights: adjustments.highlights ?? 0,
+    shadows: adjustments.shadows ?? 0,
+    temperatureMode: adjustments.temperatureMode ?? "linear",
+  };
+
+  return {
+    ...buildColorAdjustmentUniforms(adj),
+    whiteBalance: {
+      enabled: false,
+      temperature: 0,
+      tint: 0,
+      filter: DEFAULT_WHITE_BALANCE_FILTER,
+    },
   };
 }

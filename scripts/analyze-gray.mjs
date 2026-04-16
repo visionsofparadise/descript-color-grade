@@ -9,8 +9,8 @@ import { dirname, resolve, basename } from "node:path";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = resolve(here, "..");
-const specPath = resolve(workspaceRoot, "reference", "calibration-spec.json");
-const framesDir = resolve(workspaceRoot, "reference");
+const specPath = resolve(workspaceRoot, "reference", "stills", "calibration-spec.json");
+const framesDir = resolve(workspaceRoot, "reference", "stills");
 
 const spec = JSON.parse(await readFile(specPath, "utf8"));
 const grayPatches = spec.patches.filter((p) => p.row === 0);

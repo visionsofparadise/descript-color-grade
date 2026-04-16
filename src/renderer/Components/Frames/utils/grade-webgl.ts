@@ -4,7 +4,7 @@
 // uniform binding, and draw call live in exactly one place.
 
 import { FRAGMENT_SOURCE, VERTEX_SOURCE } from "./grade-shader";
-import type { ColorAdjustmentUniforms, Mat4 } from "./grade-uniforms";
+import type { GradePipelineUniforms, Mat4 } from "./grade-uniforms";
 
 export interface GradeProgram {
   program: WebGLProgram;
@@ -17,6 +17,10 @@ export interface GradeProgram {
     uColorOffset: WebGLUniformLocation;
     uHighlights: WebGLUniformLocation;
     uShadows: WebGLUniformLocation;
+    uWhiteBalanceEnabled: WebGLUniformLocation;
+    uWhiteBalanceTemperature: WebGLUniformLocation;
+    uWhiteBalanceTint: WebGLUniformLocation;
+    uWhiteBalanceFilter: WebGLUniformLocation;
   };
 }
 
@@ -102,6 +106,18 @@ export function createGradeProgram(
     uColorOffset: requireUniform(gl, program, "uColorOffset"),
     uHighlights: requireUniform(gl, program, "uHighlights"),
     uShadows: requireUniform(gl, program, "uShadows"),
+    uWhiteBalanceEnabled: requireUniform(
+      gl,
+      program,
+      "uWhiteBalanceEnabled",
+    ),
+    uWhiteBalanceTemperature: requireUniform(
+      gl,
+      program,
+      "uWhiteBalanceTemperature",
+    ),
+    uWhiteBalanceTint: requireUniform(gl, program, "uWhiteBalanceTint"),
+    uWhiteBalanceFilter: requireUniform(gl, program, "uWhiteBalanceFilter"),
   };
 
   return { program, quadBuffer, locations };
@@ -138,16 +154,24 @@ export type TextureSource =
   | ImageBitmap
   | ImageData;
 
+export interface TextureUploadOptions {
+  premultiplyAlpha?: boolean;
+}
+
 export function uploadTexture(
   gl: WebGLRenderingContext,
   texture: WebGLTexture,
   source: TextureSource,
+  options: TextureUploadOptions = {},
 ): void {
   gl.bindTexture(gl.TEXTURE_2D, texture);
   // UNPACK_FLIP_Y so the image isn't upside-down (WebGL texture origin
   // is bottom-left; everything else in the browser is top-left).
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
-  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
+  gl.pixelStorei(
+    gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,
+    options.premultiplyAlpha === true ? 1 : 0,
+  );
 
   if (source instanceof ImageData) {
     gl.texImage2D(
@@ -195,7 +219,7 @@ export function drawGrade(
   gl: WebGLRenderingContext,
   grade: GradeProgram,
   texture: WebGLTexture,
-  uniforms: ColorAdjustmentUniforms,
+  uniforms: GradePipelineUniforms,
 ): void {
   gl.useProgram(grade.program);
 
@@ -216,6 +240,19 @@ export function drawGrade(
   gl.uniform4fv(grade.locations.uColorOffset, uniforms.colorOffset);
   gl.uniform1f(grade.locations.uHighlights, uniforms.highlights);
   gl.uniform1f(grade.locations.uShadows, uniforms.shadows);
+  gl.uniform1f(
+    grade.locations.uWhiteBalanceEnabled,
+    uniforms.whiteBalance.enabled ? 1 : 0,
+  );
+  gl.uniform1f(
+    grade.locations.uWhiteBalanceTemperature,
+    uniforms.whiteBalance.temperature,
+  );
+  gl.uniform1f(grade.locations.uWhiteBalanceTint, uniforms.whiteBalance.tint);
+  gl.uniform3fv(
+    grade.locations.uWhiteBalanceFilter,
+    new Float32Array(uniforms.whiteBalance.filter),
+  );
 
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 }

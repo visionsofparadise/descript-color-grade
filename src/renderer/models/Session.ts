@@ -6,7 +6,11 @@ import "./ProxyStore/enableOp";
 
 import { Store } from "./ProxyStore/ProxyStore";
 import { createHistory, type History } from "./State/History";
-import type { Project } from "./State/Project";
+import {
+  DEFAULT_COLOR_MODEL,
+  DEFAULT_VIDEO_TREATMENT,
+  type Project,
+} from "./State/Project";
 
 // A session is the triple `(store, project, history)` of the three proxies at
 // the root of the state layer. All three are created together in `newSession()`
@@ -30,7 +34,12 @@ export function newSession(): Session {
   // on the second `newSession()` call (e.g. when the user hits New Project
   // after having opened one). Symmetrical with how `createHistory` inlines
   // its own state literal.
-  const project = store.createState<Project>({ media: [], selectedId: null });
+  const project = store.createState<Project>({
+    media: [],
+    colorModel: DEFAULT_COLOR_MODEL,
+    videoTreatment: DEFAULT_VIDEO_TREATMENT,
+    selectedId: null,
+  });
   const history = createHistory(store);
   return { store, project, history };
 }

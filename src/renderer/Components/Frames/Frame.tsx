@@ -116,6 +116,8 @@ export function Frame({ context, mediaId }: FrameProps) {
           tint={entry.props.tint / 100}
           highlights={entry.props.highlights / 100}
           shadows={entry.props.shadows / 100}
+          colorModel={project.colorModel}
+          videoTreatment={project.videoTreatment}
           fit={fit}
           className="absolute inset-0 w-full h-full"
         />

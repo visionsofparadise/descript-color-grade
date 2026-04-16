@@ -1,4 +1,8 @@
 import { useEffect, useRef } from "react";
+import type {
+  DescriptColorModel,
+  VideoTreatment,
+} from "@/models/State/Project";
 import { buildUniforms } from "./utils/grade-uniforms";
 import {
   createGradeProgram,
@@ -38,6 +42,8 @@ interface GradedCanvasProps {
   tint: number;
   highlights: number;
   shadows: number;
+  colorModel: DescriptColorModel;
+  videoTreatment: VideoTreatment;
   /** For video sources, the currently-displayed frame time in seconds. */
   frameTime?: number;
   /** Fired once the video metadata has loaded, reporting duration
@@ -60,6 +66,8 @@ export function GradedCanvas({
   tint,
   highlights,
   shadows,
+  colorModel,
+  videoTreatment,
   frameTime,
   onVideoReady,
   fit = "cover",
@@ -118,6 +126,21 @@ export function GradedCanvas({
     };
   });
 
+  // Project-level pipeline settings are also read from long-lived
+  // callbacks (`seeked`, `image.onload`, ResizeObserver-driven redraws),
+  // so keep them in a ref for the same stale-closure reason as the
+  // slider uniforms above.
+  const pipelineOptionsRef = useRef({
+    colorModel,
+    videoTreatment,
+  });
+  useEffect(() => {
+    pipelineOptionsRef.current = {
+      colorModel,
+      videoTreatment,
+    };
+  });
+
   // Draws the current source (image or video frame) through the shader
   // with the current adjustments. Safe to call whenever — no-ops if
   // the source isn't ready yet.
@@ -130,7 +153,14 @@ export function GradedCanvas({
 
     if (!sourceReadyRef.current) return;
 
-    drawGrade(gl, program, texture, buildUniforms(uniformsRef.current));
+    drawGrade(
+      gl,
+      program,
+      texture,
+      buildUniforms(uniformsRef.current, {
+        colorModel: pipelineOptionsRef.current.colorModel,
+      }),
+    );
   };
 
   // Uploads the current source content into the GPU texture. For
@@ -150,7 +180,10 @@ export function GradedCanvas({
       sourceAspectRef.current = image.naturalWidth / image.naturalHeight;
       sourceReadyRef.current = true;
     } else if (kind === "video" && video !== null) {
-      uploadTexture(gl, texture, video);
+      uploadTexture(gl, texture, video, {
+        premultiplyAlpha:
+          pipelineOptionsRef.current.videoTreatment === "descript-optimized",
+      });
       sourceAspectRef.current = video.videoWidth / video.videoHeight;
       sourceReadyRef.current = true;
     }
@@ -353,6 +386,16 @@ export function GradedCanvas({
 
     video.currentTime = target;
   }, [frameTime, kind]);
+
+  // Global pipeline settings apply immediately to the current source.
+  // Video treatment changes require a fresh upload because WebGL's
+  // pixel-store settings are latched at `texImage2D` time.
+  useEffect(() => {
+    if (!sourceReadyRef.current) return;
+
+    uploadCurrentSource();
+    render();
+  }, [colorModel, videoTreatment]);
 
   // ResizeObserver on the wrapper, rAF-throttled so we don't re-grade
   // dozens of times per second during a window drag.

@@ -13,7 +13,7 @@
 // handful of YUV-quantization pixels of the simple models below.
 
 import { describe, it, expect } from "vitest";
-import goldenData from "../../../../../reference/descript-golden.json";
+import goldenData from "../../../../../reference/stills/descript-golden.json";
 import {
   buildUniforms,
   type DescriptGradeAdjustments,
@@ -82,7 +82,12 @@ function gradeViaShader(
   const { gl, program, texture } = ensureHarness(input.width, input.height);
 
   uploadTexture(gl, texture, input);
-  drawGrade(gl, program, texture, buildUniforms(adjustments));
+  drawGrade(
+    gl,
+    program,
+    texture,
+    buildUniforms(adjustments, { colorModel: "legacy" }),
+  );
 
   return readPixelsToImageData(gl, input.width, input.height);
 }

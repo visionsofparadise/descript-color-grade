@@ -5,7 +5,11 @@ import { Sidebar } from "./Components/Sidebar";
 import { Titlebar } from "./Components/Titlebar";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import type { AppContext } from "./models/Context";
-import { NEUTRAL_PROPS } from "./models/State/Project";
+import {
+  DEFAULT_COLOR_MODEL,
+  DEFAULT_VIDEO_TREATMENT,
+  NEUTRAL_PROPS,
+} from "./models/State/Project";
 import { newSession, type Session } from "./models/Session";
 import { importMedia } from "./utils/importMedia";
 import {
@@ -43,6 +47,8 @@ export function App() {
       const next = newSession();
       next.store.mutate(next.project, (draft) => {
         draft.media = loaded.media;
+        draft.colorModel = DEFAULT_COLOR_MODEL;
+        draft.videoTreatment = DEFAULT_VIDEO_TREATMENT;
         draft.selectedId = loaded.media[0]?.id ?? null;
       });
       setSession(next);
@@ -58,12 +64,22 @@ export function App() {
       // not the live proxy. `snapshot` from `valtio/vanilla` is the imperative
       // flavor — safe to call inside an async handler (`useSnapshot` is
       // React-only and cannot be called here).
-      const mediaSnap = snapshot(session.project).media;
+      const projectSnap = snapshot(session.project);
+      const mediaSnap = projectSnap.media;
       if (projectPath !== null) {
-        await saveProjectToPath(mediaSnap, projectPath);
+        await saveProjectToPath(
+          mediaSnap,
+          projectSnap.colorModel,
+          projectSnap.videoTreatment,
+          projectPath,
+        );
         return;
       }
-      const chosen = await saveProjectAs(mediaSnap);
+      const chosen = await saveProjectAs(
+        mediaSnap,
+        projectSnap.colorModel,
+        projectSnap.videoTreatment,
+      );
       if (chosen !== undefined) setProjectPath(chosen);
     } catch (error) {
       console.error("save project failed:", error);
@@ -72,8 +88,13 @@ export function App() {
 
   const handleSaveProjectAs = async () => {
     try {
-      const mediaSnap = snapshot(session.project).media;
-      const chosen = await saveProjectAs(mediaSnap, projectPath ?? undefined);
+      const projectSnap = snapshot(session.project);
+      const chosen = await saveProjectAs(
+        projectSnap.media,
+        projectSnap.colorModel,
+        projectSnap.videoTreatment,
+        projectPath ?? undefined,
+      );
       if (chosen !== undefined) setProjectPath(chosen);
     } catch (error) {
       console.error("save project as failed:", error);

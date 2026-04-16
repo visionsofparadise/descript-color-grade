@@ -1,5 +1,6 @@
 import { app, BrowserWindow, protocol } from "electron";
 import path from "node:path";
+import squirrelStartup from "electron-squirrel-startup";
 import { ASYNC_MAIN_IPCS } from "../shared/ipc/asyncMainIpcs";
 import {
   MEDIA_SCHEME_CONFIG,
@@ -7,22 +8,27 @@ import {
 } from "./registerMediaProtocol";
 import { getContentSecurityPolicy } from "./getContentSecurityPolicy";
 
-// Handle Squirrel install/update/uninstall events on Windows.
-if (process.argv.includes("--squirrel-install") ||
-    process.argv.includes("--squirrel-updated") ||
-    process.argv.includes("--squirrel-uninstall") ||
-    process.argv.includes("--squirrel-obsolete")) {
+// Handle Squirrel install/update/uninstall events on Windows: creates
+// Start Menu + Desktop shortcuts on install, removes them on uninstall.
+if (squirrelStartup) {
   app.quit();
 }
 
 protocol.registerSchemesAsPrivileged([MEDIA_SCHEME_CONFIG]);
 
 const createMainWindow = (): BrowserWindow => {
+  // Dev mode uses Electron's default icon unless set here; packaged mode
+  // inherits the icon embedded into the exe via packagerConfig.icon.
+  const devIconPath = MAIN_WINDOW_VITE_DEV_SERVER_URL
+    ? path.join(__dirname, "../../assets/icon.ico")
+    : undefined;
+
   const mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
     minWidth: 800,
     minHeight: 600,
+    icon: devIconPath,
     titleBarStyle: "hidden",
     titleBarOverlay: {
       color: "#0a0a0a",

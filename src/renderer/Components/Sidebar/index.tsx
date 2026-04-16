@@ -2,7 +2,10 @@ import { RotateCcw } from "lucide-react";
 import { useSnapshot } from "valtio";
 import { Button } from "@/Components/UI/button";
 import type { AppContext } from "@/models/Context";
-import { NEUTRAL_PROPS, type GradeProps } from "@/models/State/Project";
+import {
+  NEUTRAL_PROPS,
+  type GradeProps,
+} from "@/models/State/Project";
 import { PathEditor } from "./PathEditor";
 import { SliderRow } from "./SliderRow";
 
@@ -40,8 +43,8 @@ export function Sidebar({ context }: SidebarProps) {
   if (entry === null || entryIndex < 0) {
     return (
       <aside className="w-72 bg-neutral-950 text-neutral-100 border-l border-neutral-800 flex flex-col shrink-0">
-        <div className="flex-1 flex items-center justify-center text-neutral-500 text-sm">
-          No image selected
+        <div className="flex-1 flex items-center justify-center px-4 text-center text-neutral-500 text-sm">
+          No media selected
         </div>
       </aside>
     );
