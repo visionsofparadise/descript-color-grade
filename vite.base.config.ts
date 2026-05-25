@@ -1,11 +1,14 @@
 import { builtinModules } from "node:module";
 import type { AddressInfo } from "node:net";
 import type { ConfigEnv, Plugin, UserConfig } from "vite";
-import pkg from "./package.json";
 
 export const builtins = ["electron", ...builtinModules.map((m) => [m, `node:${m}`]).flat()];
 
-export const external = [...builtins, ...Object.keys("dependencies" in pkg ? (pkg.dependencies as Record<string, unknown>) : {})];
+// Main + preload only need `electron` and node builtins external — everything else
+// (including `electron-squirrel-startup`) gets bundled into the asar. Forge does not
+// copy node_modules into the package, so anything externalized must resolve from
+// inside `app.asar`, which fails for npm deps.
+export const external = [...builtins];
 
 export const getBuildConfig = (env: ConfigEnv<"build">): UserConfig => {
 	const { root, mode, command } = env;
