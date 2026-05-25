@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
 
 export interface Shortcut {
-  /** Canonical key name (event.key) — lowercase letters, "ArrowUp", etc. */
   key: string;
   ctrl?: boolean;
   shift?: boolean;
@@ -20,10 +19,6 @@ function isEditableTarget(target: EventTarget | null): boolean {
 export function useKeyboardShortcuts(shortcuts: ReadonlyArray<Shortcut>): void {
   const shortcutsRef = useRef<ReadonlyArray<Shortcut>>(shortcuts);
 
-  // Keep the ref in sync with the latest shortcut list without re-mounting
-  // the window listener. Running this effect on every render (no deps)
-  // satisfies the react-hooks/refs rule (ref writes must happen outside
-  // render) while preserving the "register listener once" behavior below.
   useEffect(() => {
     shortcutsRef.current = shortcuts;
   });

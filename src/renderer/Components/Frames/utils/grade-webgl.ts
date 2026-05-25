@@ -1,8 +1,3 @@
-// WebGL1 helper for running Descript's `ColorAdjustment` shader.
-// Used by both the runtime `GradedCanvas` React component and the
-// test suite's `gradeViaShader` helper so the shader compilation,
-// uniform binding, and draw call live in exactly one place.
-
 import { FRAGMENT_SOURCE, VERTEX_SOURCE } from "./grade-shader";
 import type { GradePipelineUniforms, Mat4 } from "./grade-uniforms";
 
@@ -88,7 +83,6 @@ export function createGradeProgram(
   gl.deleteShader(vertexShader);
   gl.deleteShader(fragmentShader);
 
-  // Full-screen quad in clip-space, drawn as TRIANGLE_STRIP.
   const quadBuffer = gl.createBuffer();
 
   gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
@@ -143,10 +137,6 @@ export function createTexture(gl: WebGLRenderingContext): WebGLTexture {
   return texture;
 }
 
-// A source can be anything WebGL1's texImage2D accepts: image
-// element, video element, canvas, or ImageData. Chromium can upload
-// the current presentation frame of an HTMLVideoElement directly via
-// this call, no intermediate canvas required.
 export type TextureSource =
   | HTMLImageElement
   | HTMLVideoElement
@@ -165,8 +155,6 @@ export function uploadTexture(
   options: TextureUploadOptions = {},
 ): void {
   gl.bindTexture(gl.TEXTURE_2D, texture);
-  // UNPACK_FLIP_Y so the image isn't upside-down (WebGL texture origin
-  // is bottom-left; everything else in the browser is top-left).
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
   gl.pixelStorei(
     gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,
@@ -197,10 +185,6 @@ export function uploadTexture(
   }
 }
 
-// GLSL `mat4` is column-major. Our `Mat4` type in grade-uniforms.ts is
-// row-major (outer array is rows, inner is columns), which matches how
-// the original Descript JS builds matrices. Transpose into the layout
-// `uniformMatrix4fv` expects.
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 function flattenColumnMajor(matrix: Mat4): Float32Array {
   const out = new Float32Array(16);
@@ -257,9 +241,6 @@ export function drawGrade(
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 }
 
-// Reads the current framebuffer into an ImageData. Used by the test
-// helper to pull pixels back after `drawGrade` for assertion. Not
-// called at runtime — the runtime just displays the canvas directly.
 export function readPixelsToImageData(
   gl: WebGLRenderingContext,
   width: number,
@@ -269,7 +250,6 @@ export function readPixelsToImageData(
 
   gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, buffer);
 
-  // readPixels returns bottom-to-top; flip to top-to-bottom.
   const flipped = new Uint8ClampedArray(width * height * 4);
 
   for (let row = 0; row < height; row++) {

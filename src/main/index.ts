@@ -8,8 +8,6 @@ import {
 } from "./registerMediaProtocol";
 import { getContentSecurityPolicy } from "./getContentSecurityPolicy";
 
-// Handle Squirrel install/update/uninstall events on Windows: creates
-// Start Menu + Desktop shortcuts on install, removes them on uninstall.
 if (squirrelStartup) {
   app.quit();
 }
@@ -17,8 +15,6 @@ if (squirrelStartup) {
 protocol.registerSchemesAsPrivileged([MEDIA_SCHEME_CONFIG]);
 
 const createMainWindow = (): BrowserWindow => {
-  // Dev mode uses Electron's default icon unless set here; packaged mode
-  // inherits the icon embedded into the exe via packagerConfig.icon.
   const devIconPath = MAIN_WINDOW_VITE_DEV_SERVER_URL
     ? path.join(__dirname, "../../assets/icon.ico")
     : undefined;

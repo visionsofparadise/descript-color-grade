@@ -3,12 +3,16 @@ import type {
   IpcHandlerParameters,
   IpcHandlerReturn,
 } from "../models/AsyncRendererIpc";
+import { DeleteFileRendererIpc } from "./FileSystem/deleteFile/Renderer";
+import { GetTempPathRendererIpc } from "./FileSystem/getTempPath/Renderer";
 import { ReadFileRendererIpc } from "./FileSystem/readFile/Renderer";
 import { WriteFileRendererIpc } from "./FileSystem/writeFile/Renderer";
 import { ShowOpenDialogRendererIpc } from "./Dialog/showOpenDialog/Renderer";
 import { ShowSaveDialogRendererIpc } from "./Dialog/showSaveDialog/Renderer";
 
 export const ASYNC_RENDERER_IPCS = [
+  DeleteFileRendererIpc,
+  GetTempPathRendererIpc,
   ReadFileRendererIpc,
   WriteFileRendererIpc,
   ShowOpenDialogRendererIpc,

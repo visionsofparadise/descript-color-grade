@@ -30,8 +30,8 @@ export const MEDIA_SCHEME_CONFIG = {
 } as const;
 
 const parseMediaPath = (url: URL): string => {
+  // Chromium normalizes media:///C:/path to media://c/path (treats C: as host).
   if (process.platform === "win32" && url.host.length === 1) {
-    // Chromium normalizes media:///C:/path to media://c/path (treating C: as host)
     return `${url.host.toUpperCase()}:${decodeURIComponent(url.pathname)}`;
   }
 
@@ -60,14 +60,10 @@ const parseRangeHeader = (
 };
 
 const toWebStream = (nodeStream: ReadStream): ReadableStream<Uint8Array> => {
-  // Swallow late "error" events (e.g. ERR_STREAM_PREMATURE_CLOSE) that fire
-  // after Chromium aborts a Range request during video seek. The abort
-  // propagates via the Web stream's cancel(), which destroys the Node
-  // stream — but Node still emits the error asynchronously. Without this
-  // listener, Node sees it as an unhandled "error" and logs noise.
-  nodeStream.on("error", () => {
-    // intentional: error already surfaced through the web stream cancel path
-  });
+  // Swallow late ERR_STREAM_PREMATURE_CLOSE fired after Chromium aborts a Range
+  // request mid-seek. The cancel already destroyed the stream; without this
+  // listener Node treats it as unhandled and logs noise.
+  nodeStream.on("error", () => {});
   return Readable.toWeb(nodeStream) as ReadableStream<Uint8Array>;
 };
 

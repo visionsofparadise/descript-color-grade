@@ -1,7 +1,3 @@
-// enableOp must load before any state is created so that valtio's subscribe
-// calls deliver op tuples instead of empty arrays.
-import "../ProxyStore/enableOp";
-
 import { describe, expect, it } from "vitest";
 import { Store } from "../ProxyStore/ProxyStore";
 import { createHistory } from "./History";
@@ -29,16 +25,12 @@ const makeFixture = (): {
 };
 
 describe("History", () => {
-  // Canary for the spread-strips-getters regression. `canUndo` must remain a
-  // live getter on the history proxy — if `createState` spreads the state
-  // literal, the getter is materialized as a frozen data property at
-  // construction time and always reads `false` regardless of `_index`.
   it("canUndo reflects mutations (getter reactivity regression)", () => {
     const { history, state } = makeFixture();
 
     expect(history.canUndo).toBe(false);
-    history.mutate(state, (draft) => {
-      draft.value = 1;
+    history.mutate(state, (proxy) => {
+      proxy.value = 1;
     });
     expect(history.canUndo).toBe(true);
   });
@@ -46,8 +38,8 @@ describe("History", () => {
   it("records a mutation", () => {
     const { history, state } = makeFixture();
 
-    history.mutate(state, (draft) => {
-      draft.value = 5;
+    history.mutate(state, (proxy) => {
+      proxy.value = 5;
     });
     expect(state.value).toBe(5);
     expect(history._stack.length).toBe(1);
@@ -66,8 +58,8 @@ describe("History", () => {
   it("undo restores previous value", () => {
     const { history, state } = makeFixture();
 
-    history.mutate(state, (draft) => {
-      draft.value = 5;
+    history.mutate(state, (proxy) => {
+      proxy.value = 5;
     });
     history.undo();
     expect(state.value).toBe(0);
@@ -78,8 +70,8 @@ describe("History", () => {
   it("redo replays forward", () => {
     const { history, state } = makeFixture();
 
-    history.mutate(state, (draft) => {
-      draft.value = 5;
+    history.mutate(state, (proxy) => {
+      proxy.value = 5;
     });
     history.undo();
     history.redo();
@@ -98,8 +90,8 @@ describe("History", () => {
   it("redo past top is a noop", () => {
     const { history, state } = makeFixture();
 
-    history.mutate(state, (draft) => {
-      draft.value = 1;
+    history.mutate(state, (proxy) => {
+      proxy.value = 1;
     });
     history.redo();
     expect(history.canRedo).toBe(false);
@@ -112,8 +104,8 @@ describe("History", () => {
     for (const next of [1, 2, 3, 4, 5]) {
       history.mutate(
         state,
-        (draft) => {
-          draft.value = next;
+        (proxy) => {
+          proxy.value = next;
         },
         { transactionKey: "drag-1" },
       );
@@ -128,21 +120,19 @@ describe("History", () => {
   it("new mutation after undo truncates forward stack", () => {
     const { history, state } = makeFixture();
 
-    history.mutate(state, (draft) => {
-      draft.value = 1;
+    history.mutate(state, (proxy) => {
+      proxy.value = 1;
     });
-    history.mutate(state, (draft) => {
-      draft.value = 2;
+    history.mutate(state, (proxy) => {
+      proxy.value = 2;
     });
-    history.mutate(state, (draft) => {
-      draft.value = 3;
+    history.mutate(state, (proxy) => {
+      proxy.value = 3;
     });
     history.undo();
     history.undo();
-    // _index should now be 0 (one entry still applied). Forward stack has
-    // two orphaned entries that must be discarded by the next mutation.
-    history.mutate(state, (draft) => {
-      draft.value = 10;
+    history.mutate(state, (proxy) => {
+      proxy.value = 10;
     });
 
     expect(history.canRedo).toBe(false);
@@ -154,8 +144,8 @@ describe("History", () => {
   it("applyOp restores nested path on undo", () => {
     const { history, state } = makeFixture();
 
-    history.mutate(state, (draft) => {
-      draft.nested.count = 10;
+    history.mutate(state, (proxy) => {
+      proxy.nested.count = 10;
     });
     expect(state.nested.count).toBe(10);
 

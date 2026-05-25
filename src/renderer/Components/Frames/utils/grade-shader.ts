@@ -1,18 +1,4 @@
-// GLSL source for Descript's current color pipeline.
-//
-// The `FRAGMENT_SOURCE` below is a direct copy of the
-// `ColorAdjustment` + `ColorAdjustment_adjustLighting` functions
-// extracted from Descript's renderer bundle at
-// `%LocalAppData%\Descript\Partitions\descript2\Cache\Cache_Data\f_09e4ea`
-// (webpack chunk pushed from https://web.descript.com/static), wrapped
-// in a WebGL1 `main()` that samples `uSource`, runs the effect, and
-// writes `gl_FragColor`. The wrapping boilerplate is ours; everything
-// between `vec4 ColorAdjustment_adjustLighting(...)` and the closing
-// brace of `vec4 ColorAdjustment(...)` is Descript's code unmodified,
-// including the non-normalized `vec3(0.3, 0.3, 0.3)` luminance weights
-// and the magic constants 0.76 / 0.8. The `WhiteBalance(...)` function
-// is likewise copied verbatim from the current bundle so upgraded
-// projects can route temperature/tint through the same pre-stage.
+// Calibration depends on bit-exact match with Descript's bundle. Modify only when re-extracting.
 
 export const VERTEX_SOURCE = `
 attribute vec2 aPosition;

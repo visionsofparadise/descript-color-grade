@@ -118,7 +118,6 @@
   }
 }
 
-/* Electron drag region for the hidden-titlebar overlay */
 .titlebar {
   -webkit-app-region: drag;
 }

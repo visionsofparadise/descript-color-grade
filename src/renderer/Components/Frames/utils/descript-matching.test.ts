@@ -1,17 +1,3 @@
-// Integration tests asserting our unified DescriptGrade effect matches
-// Descript's slider behavior for every calibration patch (gray and
-// color) at every sampled strength. Driven by descript-golden.json,
-// which is extracted from the calibration MP4s by
-// scripts/extract-frames.mjs + scripts/extract-golden.mjs.
-//
-// Critical fix in this revision: frames are extracted with
-// `scale=in_color_matrix=bt709` on ffmpeg. Without the explicit
-// matrix, SD-resolution MP4s (854×480) decode as BT.601 and produce
-// phantom per-channel deviations on saturated colors — which is how
-// earlier iterations of this project ended up with bespoke overfitted
-// formulas. With BT.709 decoding the color patches land within a
-// handful of YUV-quantization pixels of the simple models below.
-
 import { describe, it, expect } from "vitest";
 import goldenData from "../../../../../reference/stills/descript-golden.json";
 import {
@@ -25,15 +11,6 @@ import {
   readPixelsToImageData,
   uploadTexture,
 } from "./grade-webgl";
-
-// ----- WebGL test harness -----
-//
-// Each test invocation builds a 1-row ImageData (one texel per patch),
-// compiles the shader (cached per test run), uploads the input as a
-// texture, draws through the shader, reads pixels back, returns an
-// ImageData that the existing assertion logic treats like JS output.
-// Tests run in browser mode (vitest's Playwright-driven Chromium) so
-// we have a real WebGL context.
 
 let harness: {
   canvas: HTMLCanvasElement;
@@ -92,25 +69,11 @@ function gradeViaShader(
   return readPixelsToImageData(gl, input.width, input.height);
 }
 
-// Baseline tolerance for per-channel matches. Descript's MP4 output
-// carries ±2-3 of YUV420p quantization noise. The implementation in
-// DescriptGrade.tsx is a verbatim port of Descript's actual shader +
-// JS uniform binder, so this encoding noise is the only source of
-// drift. ±5 is the tightest band that every strength × patch lands
-// inside for unclamped values.
 const TOLERANCE = 5;
 
-// Clip-region tolerance. When either the observed or predicted value
-// is within a few steps of 0 or 255, Descript's MP4 encoder softens
-// the extreme last ~8 levels of each primary (e.g. red-255 → 241
-// rather than 255 after per-channel contrast). Relax here so pure
-// primaries don't dominate the signal.
 const CLIP_REGION = 238;
 const CLIP_TOLERANCE = 18;
 
-// Highlights and shadows use the same tolerance as the baseline now
-// that the port reproduces Descript's exact pow-curve + extrapolation
-// formula.
 const SHAPE_TOLERANCE = 5;
 
 interface GoldenPatch {
@@ -192,13 +155,6 @@ function extractRgb(
   return result;
 }
 
-// Patches that appear in real podcast footage: grays (including dark
-// grays), skin tones, and natural midtone/highlight colors. Excludes
-// the saturated-primary dark corners where Descript's highlight and
-// shadow curves scale channels non-uniformly with a model that can't
-// be captured by a single luminance-mask fit. The practical use case
-// is natural content, so those saturated corners aren't required to
-// match to the same tightness.
 function isNaturalContentPatch(label: string): boolean {
   return (
     label.startsWith("gray-") ||

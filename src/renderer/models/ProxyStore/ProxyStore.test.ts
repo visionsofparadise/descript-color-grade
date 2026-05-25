@@ -21,11 +21,6 @@ describe("Store", () => {
     expect(store.dangerouslyGetProxy(state._key)).toBe(state);
   });
 
-  // Canary for the spread-strips-getters bug. If `createState` ever reverts
-  // to `proxy({ ...initial, _key })`, the getter is invoked at spread time,
-  // materialized as a frozen data property with the initial value, and this
-  // test fails because `doubled` no longer reflects `value * 2` after a
-  // mutation.
   it("createState preserves accessor properties", () => {
     const store = new Store();
     const state = store.createState<AccessorState>({
@@ -36,8 +31,8 @@ describe("Store", () => {
     });
 
     expect(state.doubled).toBe(2);
-    store.mutate(state, (draft) => {
-      draft.value = 5;
+    store.mutate(state, (proxy) => {
+      proxy.value = 5;
     });
     expect(state.doubled).toBe(10);
   });
@@ -46,8 +41,8 @@ describe("Store", () => {
     const store = new Store();
     const state = store.createState<PlainState>({ value: 1 });
 
-    store.mutate(state, (draft) => {
-      draft.value = 2;
+    store.mutate(state, (proxy) => {
+      proxy.value = 2;
     });
     expect(state.value).toBe(2);
   });
