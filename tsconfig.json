@@ -25,5 +25,5 @@
     }
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", ".vite", "out", "**/*.test.ts", "**/*.test.tsx"]
+  "exclude": ["node_modules", "dist", ".vite", "out"]
 }
