@@ -9,7 +9,7 @@ interface PathEditorProps {
 }
 
 export function PathEditor({ entryIndex, value, context }: PathEditorProps) {
-	const { project, history } = context;
+	const { project } = context;
 	const [localValue, setLocalValue] = useState(value);
 
 	useEffect(() => {
@@ -25,8 +25,8 @@ export function PathEditor({ entryIndex, value, context }: PathEditorProps) {
 			return;
 		}
 
-		history.mutate(project, (proxy) => {
-			const target = proxy.media[entryIndex];
+		project.mutate((mutable) => {
+			const target = mutable.media[entryIndex];
 
 			if (target) {
 				target.path = trimmed;

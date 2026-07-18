@@ -1,4 +1,4 @@
-import type { DescriptColorModel, VideoTreatment } from "@/models/State/Project";
+import type { DescriptColorModel, VideoTreatment } from "@/models/Project";
 import { useEffect, useRef } from "react";
 import { buildUniforms } from "./utils/grade-uniforms";
 import { createGradeProgram, createTexture, destroyGradeProgram, drawGrade, uploadTexture, type GradeProgram } from "./utils/grade-webgl";

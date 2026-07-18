@@ -1,8 +1,8 @@
 import { Button } from "@/Components/UI/button";
 import type { ProjectContext } from "@/models/Context";
-import { resnapshot } from "@/models/ProxyStore/resnapshot";
-import { NEUTRAL_PROPS, type GradeProps } from "@/models/State/Project";
+import { NEUTRAL_PROPS, type GradeProps } from "@/models/Project";
 import { RotateCcw } from "lucide-react";
+import { retrack } from "opshot/react";
 import { PathEditor } from "./PathEditor";
 import { SliderRow } from "./SliderRow";
 
@@ -25,9 +25,9 @@ const SLIDERS: ReadonlyArray<SliderDefinition> = [
 	{ key: "shadows", label: "Shadows" },
 ];
 
-export const Sidebar = resnapshot<SidebarProps>(({ context }) => {
-	const { project, history } = context;
-	const selectedId = project.selectedId;
+export const Sidebar = retrack<SidebarProps>(({ context }) => {
+	const { project, selection } = context;
+	const selectedId = selection.selectedId;
 
 	const entry = selectedId === null ? null : (project.media.find((item) => item.id === selectedId) ?? null);
 
@@ -42,8 +42,8 @@ export const Sidebar = resnapshot<SidebarProps>(({ context }) => {
 	}
 
 	const handleResetAll = () => {
-		history.mutate(project, (proxy) => {
-			const target = proxy.media[entryIndex];
+		project.mutate((mutable) => {
+			const target = mutable.media[entryIndex];
 
 			if (target) target.props = { ...NEUTRAL_PROPS };
 		});

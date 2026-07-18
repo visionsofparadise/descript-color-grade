@@ -2,7 +2,7 @@ import { Button } from "@/Components/UI/button";
 import { Input } from "@/Components/UI/input";
 import { Slider } from "@/Components/UI/slider";
 import type { ProjectContext } from "@/models/Context";
-import type { GradeProps } from "@/models/State/Project";
+import type { GradeProps } from "@/models/Project";
 import { clamp } from "@/utils/clamp";
 import { RotateCcw } from "lucide-react";
 import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
@@ -20,7 +20,7 @@ const MAX = 100;
 const ALLOWED = /^-?\d*$/;
 
 export function SliderRow({ entryIndex, propKey, label, value, context }: SliderRowProps) {
-	const { project, history } = context;
+	const { project } = context;
 	const [localValue, setLocalValue] = useState(String(value));
 	const dragKeyRef = useRef<string>(crypto.randomUUID());
 
@@ -29,10 +29,9 @@ export function SliderRow({ entryIndex, propKey, label, value, context }: Slider
 	}, [value]);
 
 	const write = (next: number, transactionKey: string) => {
-		history.mutate(
-			project,
-			(proxy) => {
-				const target = proxy.media[entryIndex];
+		project.mutate(
+			(mutable) => {
+				const target = mutable.media[entryIndex];
 
 				if (target) target.props[propKey] = next;
 			},

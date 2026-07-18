@@ -1,14 +1,16 @@
+import type { State } from "opshot";
 import { useMemo } from "react";
 import { useProjectKeyboardShortcuts } from "./hooks/useProjectKeyboardShortcuts";
-import type { AppContext, ProjectContext } from "./models/Context";
-import type { History } from "./models/State/History";
-import { NEUTRAL_PROPS, type Project } from "./models/State/Project";
+import type { AppContext, ProjectContext, Selection } from "./models/Context";
+import type { History, ProjectMeta } from "./models/History";
+import { NEUTRAL_PROPS, type Project } from "./models/Project";
 import { ProjectLayout } from "./ProjectLayout";
 import { importMedia } from "./utils/importMedia";
 import { isTempProject, saveProjectAs, saveProjectToPath } from "./utils/projectFile";
 
 interface ProjectViewProps {
-	project: Project;
+	project: State<Project, ProjectMeta, ProjectMeta>;
+	selection: State<Selection>;
 	history: History;
 	setProjectPath: (path: string) => void;
 	onNewProject: () => void;
@@ -17,14 +19,15 @@ interface ProjectViewProps {
 	context: AppContext;
 }
 
-export function ProjectView({ project, history, setProjectPath, onNewProject, onOpenProject, onCloseWindow, context: appContext }: ProjectViewProps) {
-	const context: ProjectContext = useMemo(() => ({ ...appContext, project, history }), [appContext, project, history]);
+export function ProjectView({ project, selection, history, setProjectPath, onNewProject, onOpenProject, onCloseWindow, context: appContext }: ProjectViewProps) {
+	const context: ProjectContext = useMemo(() => ({ ...appContext, project, selection, history }), [appContext, project, selection, history]);
 
 	const handleSaveProjectAs = async () => {
 		try {
 			const currentPath = context.projectPath;
 			const defaultPath = currentPath !== null && !isTempProject(currentPath) ? currentPath : undefined;
-			const chosen = await saveProjectAs(project.media, project.colorModel, project.videoTreatment, defaultPath, context);
+			const current = project.op.unwrap();
+			const chosen = await saveProjectAs(current.media, current.colorModel, current.videoTreatment, defaultPath, context);
 
 			if (chosen !== undefined) setProjectPath(chosen);
 		} catch (error) {
@@ -42,7 +45,9 @@ export function ProjectView({ project, history, setProjectPath, onNewProject, on
 		}
 
 		try {
-			await saveProjectToPath(project.media, project.colorModel, project.videoTreatment, currentPath, context);
+			const current = project.op.unwrap();
+
+			await saveProjectToPath(current.media, current.colorModel, current.videoTreatment, currentPath, context);
 		} catch (error) {
 			console.error("save project failed:", error);
 		}
@@ -54,9 +59,12 @@ export function ProjectView({ project, history, setProjectPath, onNewProject, on
 
 			if (loaded.length === 0) return;
 
-			history.mutate(project, (proxy) => {
-				proxy.media.push(...loaded);
-				proxy.selectedId ??= loaded[0]?.id ?? null;
+			project.mutate((mutable) => {
+				mutable.media.push(...loaded);
+			});
+
+			selection.mutate((mutable) => {
+				mutable.selectedId ??= loaded[0]?.id ?? null;
 			});
 		} catch (error) {
 			console.error("import media failed:", error);
@@ -64,17 +72,20 @@ export function ProjectView({ project, history, setProjectPath, onNewProject, on
 	};
 
 	const handleClearAllValues = () => {
-		history.mutate(project, (proxy) => {
-			for (const entry of proxy.media) {
+		project.mutate((mutable) => {
+			for (const entry of mutable.media) {
 				entry.props = { ...NEUTRAL_PROPS };
 			}
 		});
 	};
 
 	const handleClearAllFrames = () => {
-		history.mutate(project, (proxy) => {
-			proxy.media = [];
-			proxy.selectedId = null;
+		project.mutate((mutable) => {
+			mutable.media = [];
+		});
+
+		selection.mutate((mutable) => {
+			mutable.selectedId = null;
 		});
 	};
 

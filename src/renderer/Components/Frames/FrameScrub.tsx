@@ -10,17 +10,16 @@ interface FrameScrubProps {
 }
 
 export function FrameScrub({ mediaId, name, duration, frameTime, context }: FrameScrubProps) {
-	const { project, history } = context;
+	const { project } = context;
 
 	const scrubKeyRef = useRef<string>(crypto.randomUUID());
 
 	const handleScrub = (event: ChangeEvent<HTMLInputElement>) => {
 		const next = Number(event.target.value);
 
-		history.mutate(
-			project,
-			(proxy) => {
-				const target = proxy.media.find((item) => item.id === mediaId);
+		project.mutate(
+			(mutable) => {
+				const target = mutable.media.find((item) => item.id === mediaId);
 
 				if (target) target.frameTime = next;
 			},

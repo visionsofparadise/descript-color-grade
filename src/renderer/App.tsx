@@ -2,17 +2,15 @@ import { useMemo, useState } from "react";
 import { EmptyView } from "./EmptyView";
 import { useAppKeyboardShortcuts } from "./hooks/useAppKeyboardShortcuts";
 import type { AppContext } from "./models/Context";
-import { Store } from "./models/ProxyStore/ProxyStore";
 import { ProjectLoader } from "./ProjectLoader";
 import { createNewProjectFile, pickProjectPath } from "./utils/projectFile";
 
 export function App() {
-	const [store] = useState(() => new Store());
 	const [projectPath, setProjectPath] = useState<string | undefined>(undefined);
 
 	const context: AppContext = useMemo(
-		() => ({ main: window.main, store, projectPath: projectPath ?? null }),
-		[store, projectPath],
+		() => ({ main: window.main, projectPath: projectPath ?? null }),
+		[projectPath],
 	);
 
 	const handleNewProject = async () => {

@@ -1,10 +1,10 @@
 import { Button } from "@/Components/UI/button";
 import type { ProjectContext } from "@/models/Context";
-import { resnapshot } from "@/models/ProxyStore/resnapshot";
 import { detectKind, mediaUrl } from "@/utils/media";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Maximize2, Minimize2, X } from "lucide-react";
+import { retrack } from "opshot/react";
 import { basename } from "pathe";
 import { useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { FrameScrub } from "./FrameScrub";
@@ -17,8 +17,8 @@ interface FrameProps {
 	context: ProjectContext;
 }
 
-export const Frame = resnapshot<FrameProps>(({ mediaId, context }) => {
-	const { project, store, history } = context;
+export const Frame = retrack<FrameProps>(({ mediaId, context }) => {
+	const { project, selection } = context;
 
 	const entry = project.media.find((item) => item.id === mediaId);
 
@@ -28,7 +28,7 @@ export const Frame = resnapshot<FrameProps>(({ mediaId, context }) => {
 
 	if (entry === undefined) return null;
 
-	const selected = project.selectedId === mediaId;
+	const selected = selection.selectedId === mediaId;
 	const name = basename(entry.path);
 	const url = mediaUrl(entry.path);
 	const kind = detectKind(entry.path);
@@ -41,8 +41,8 @@ export const Frame = resnapshot<FrameProps>(({ mediaId, context }) => {
 	};
 
 	const handleSelect = () => {
-		store.mutate(project, (proxy) => {
-			proxy.selectedId = mediaId;
+		selection.mutate((mutable) => {
+			mutable.selectedId = mediaId;
 		});
 	};
 
@@ -56,11 +56,14 @@ export const Frame = resnapshot<FrameProps>(({ mediaId, context }) => {
 	const handleRemove = (event: ReactMouseEvent<HTMLButtonElement>) => {
 		event.stopPropagation();
 
-		history.mutate(project, (proxy) => {
-			const removedIndex = proxy.media.findIndex((item) => item.id === mediaId);
+		project.mutate((mutable) => {
+			const removedIndex = mutable.media.findIndex((item) => item.id === mediaId);
 
-			if (removedIndex >= 0) proxy.media.splice(removedIndex, 1);
-			if (proxy.selectedId === mediaId) proxy.selectedId = null;
+			if (removedIndex >= 0) mutable.media.splice(removedIndex, 1);
+		});
+
+		selection.mutate((mutable) => {
+			if (mutable.selectedId === mediaId) mutable.selectedId = null;
 		});
 	};
 

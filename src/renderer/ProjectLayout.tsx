@@ -1,9 +1,9 @@
+import { retrack } from "opshot/react";
 import { Frames } from "./Components/Frames";
 import { Sidebar } from "./Components/Sidebar";
 import { Titlebar } from "./Components/Titlebar";
 import { AppMenu } from "./Components/Titlebar/AppMenu";
 import type { ProjectContext } from "./models/Context";
-import { resnapshot } from "./models/ProxyStore/resnapshot";
 
 interface ProjectLayoutProps {
 	onNewProject: () => void;
@@ -19,7 +19,7 @@ interface ProjectLayoutProps {
 	context: ProjectContext;
 }
 
-export const ProjectLayout = resnapshot<ProjectLayoutProps>(
+export const ProjectLayout = retrack<ProjectLayoutProps>(
 	({ onNewProject, onOpenProject, onSaveProject, onSaveProjectAs, onUndo, onRedo, onCloseWindow, onImportMedia, onClearAllValues, onClearAllFrames, context }) => (
 		<div className="h-screen flex flex-col bg-neutral-950 text-neutral-100">
 			<Titlebar>

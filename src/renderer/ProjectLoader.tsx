@@ -1,7 +1,8 @@
+import { createState, type State } from "opshot";
 import { useEffect, useState } from "react";
-import type { AppContext } from "./models/Context";
-import { createHistory, type History } from "./models/State/History";
-import type { Project } from "./models/State/Project";
+import type { AppContext, Selection } from "./models/Context";
+import { createHistory, projectMeta, type History, type ProjectMeta } from "./models/History";
+import type { Project } from "./models/Project";
 import { ProjectView } from "./ProjectView";
 import { isTempProject, openProject } from "./utils/projectFile";
 
@@ -15,7 +16,8 @@ interface ProjectLoaderProps {
 }
 
 interface ProjectState {
-	project: Project;
+	project: State<Project, ProjectMeta, ProjectMeta>;
+	selection: State<Selection>;
 	history: History;
 }
 
@@ -26,10 +28,15 @@ export function ProjectLoader({ projectPath, setProjectPath, onNewProject, onOpe
 		let cancelled = false;
 
 		openProject(projectPath, context)
-			.then((project) => {
+			.then((data) => {
+				const selectedId = data.media[0]?.id ?? null;
+				const project = createState(data, projectMeta);
+				const selection = createState<Selection>({ selectedId });
+				const history = createHistory(project);
+
 				if (cancelled) return;
 
-				setState({ project, history: createHistory(context.store) });
+				setState({ project, selection, history });
 			})
 			.catch((error: unknown) => {
 				console.error("open project failed:", error);
@@ -53,6 +60,7 @@ export function ProjectLoader({ projectPath, setProjectPath, onNewProject, onOpe
 	return (
 		<ProjectView
 			project={state.project}
+			selection={state.selection}
 			history={state.history}
 			setProjectPath={setProjectPath}
 			onNewProject={onNewProject}

@@ -1,9 +1,9 @@
 import { Button } from "@/Components/UI/button";
 import type { ProjectContext } from "@/models/Context";
-import { resnapshot } from "@/models/ProxyStore/resnapshot";
 import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy } from "@dnd-kit/sortable";
 import { Eraser, ImagePlus, Trash2 } from "lucide-react";
+import { retrack } from "opshot/react";
 import { useEffect, useRef, useState } from "react";
 import { Frame } from "./Frame";
 import { computeGridDimensions } from "./utils/computeGridDimensions";
@@ -15,8 +15,8 @@ interface FramesProps {
 	context: ProjectContext;
 }
 
-export const Frames = resnapshot<FramesProps>(({ onImportMedia, onClearAllValues, onClearAllFrames, context }) => {
-	const { project, history } = context;
+export const Frames = retrack<FramesProps>(({ onImportMedia, onClearAllValues, onClearAllFrames, context }) => {
+	const { project } = context;
 	const { media } = project;
 
 	const gridRef = useRef<HTMLDivElement>(null);
@@ -33,8 +33,8 @@ export const Frames = resnapshot<FramesProps>(({ onImportMedia, onClearAllValues
 
 		if (oldIndex < 0 || newIndex < 0) return;
 
-		history.mutate(project, (proxy) => {
-			proxy.media = arrayMove(proxy.media, oldIndex, newIndex);
+		project.mutate((mutable) => {
+			mutable.media = arrayMove(mutable.media, oldIndex, newIndex);
 		});
 	};
 

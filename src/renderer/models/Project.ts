@@ -1,5 +1,3 @@
-import type { State } from ".";
-
 export type MediaKind = "image" | "video";
 export type DescriptColorModel = "legacy" | "upgraded";
 export type VideoTreatment = "raw-source" | "descript-optimized";
@@ -35,9 +33,8 @@ export interface MediaEntry {
 	props: GradeProps;
 }
 
-export interface Project extends State {
+export interface Project {
 	media: Array<MediaEntry>;
 	colorModel: DescriptColorModel;
 	videoTreatment: VideoTreatment;
-	selectedId: string | null;
 }

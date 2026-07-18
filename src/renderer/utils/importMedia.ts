@@ -1,6 +1,6 @@
 import type { AppContext } from "../models/Context";
-import type { MediaEntry } from "../models/State/Project";
-import { NEUTRAL_PROPS } from "../models/State/Project";
+import type { MediaEntry } from "../models/Project";
+import { NEUTRAL_PROPS } from "../models/Project";
 import { detectKind } from "./media";
 
 export async function importMedia(context: AppContext): Promise<Array<MediaEntry>> {

@@ -1,7 +1,7 @@
 import { basename, join } from "pathe";
 import type { AppContext } from "../models/Context";
-import type { DescriptColorModel, MediaEntry, Project, VideoTreatment } from "../models/State/Project";
-import { DEFAULT_COLOR_MODEL, DEFAULT_VIDEO_TREATMENT } from "../models/State/Project";
+import type { DescriptColorModel, MediaEntry, Project, VideoTreatment } from "../models/Project";
+import { DEFAULT_COLOR_MODEL, DEFAULT_VIDEO_TREATMENT } from "../models/Project";
 
 const TEMP_PROJECT_PREFIX = "dcg-untitled-";
 
@@ -78,12 +78,11 @@ export async function openProject(path: string, context: AppContext): Promise<Pr
 	const colorModel = (parsed as { colorModel?: unknown }).colorModel === "legacy" ? "legacy" : DEFAULT_COLOR_MODEL;
 	const videoTreatment = (parsed as { videoTreatment?: unknown }).videoTreatment === "raw-source" ? "raw-source" : DEFAULT_VIDEO_TREATMENT;
 
-	return context.store.createState<Project>({
+	return {
 		media,
 		colorModel,
 		videoTreatment,
-		selectedId: media[0]?.id ?? null,
-	});
+	};
 }
 
 export async function createNewProjectFile(context: AppContext): Promise<string> {
