@@ -1,14 +1,20 @@
-import { Button } from "@/Components/UI/button";
-import type { ProjectContext } from "@/models/Context";
-import { detectKind, mediaUrl } from "@/utils/media";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Maximize2, Minimize2, X } from "lucide-react";
 import { retrack } from "opshot/react";
 import { basename } from "pathe";
-import { useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import {
+	useState,
+	type CSSProperties,
+	type KeyboardEvent as ReactKeyboardEvent,
+	type MouseEvent as ReactMouseEvent,
+	type PointerEvent as ReactPointerEvent,
+} from "react";
+import { Button } from "@/Components/UI/button";
+import { detectKind, mediaUrl } from "@/utils/media";
 import { FrameScrub } from "./FrameScrub";
 import { GradedCanvas } from "./GradedCanvas";
+import type { ProjectContext } from "@/models/Context";
 
 type FitMode = "contain" | "cover";
 
@@ -81,11 +87,7 @@ export const Frame = retrack<FrameProps>(({ mediaId, context }) => {
 	const fitLabel = fit === "contain" ? `Fill frame with ${name}` : `Fit ${name} inside frame`;
 
 	return (
-		<div
-			ref={setNodeRef}
-			style={sortableStyle}
-			className="group flex flex-col min-h-0 min-w-0"
-		>
+		<div ref={setNodeRef} style={sortableStyle} className="group flex flex-col min-h-0 min-w-0">
 			<div
 				{...attributes}
 				{...listeners}
@@ -148,7 +150,11 @@ export const Frame = retrack<FrameProps>(({ mediaId, context }) => {
 					/>
 				) : null}
 			</div>
-			<p className={`text-xs truncate flex-shrink-0 w-full px-2 py-1 transition-colors ${selected ? "bg-sky-500 text-white font-medium" : "bg-neutral-900 text-neutral-400"}`}>{name}</p>
+			<p
+				className={`text-xs truncate flex-shrink-0 w-full px-2 py-1 transition-colors ${selected ? "bg-sky-500 text-white font-medium" : "bg-neutral-900 text-neutral-400"}`}
+			>
+				{name}
+			</p>
 		</div>
 	);
 });

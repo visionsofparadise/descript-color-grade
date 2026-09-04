@@ -1,10 +1,10 @@
 import { createState, type State } from "opshot";
 import { useEffect, useState } from "react";
-import type { AppContext, Selection } from "./models/Context";
 import { createHistory, projectMeta, type History, type ProjectMeta } from "./models/History";
-import type { Project } from "./models/Project";
 import { ProjectView } from "./ProjectView";
 import { isTempProject, openProject } from "./utils/projectFile";
+import type { AppContext, Selection } from "./models/Context";
+import type { Project } from "./models/Project";
 
 interface ProjectLoaderProps {
 	projectPath: string;
@@ -21,7 +21,14 @@ interface ProjectState {
 	history: History;
 }
 
-export function ProjectLoader({ projectPath, setProjectPath, onNewProject, onOpenProject, onCloseWindow, context }: ProjectLoaderProps) {
+export function ProjectLoader({
+	projectPath,
+	setProjectPath,
+	onNewProject,
+	onOpenProject,
+	onCloseWindow,
+	context,
+}: ProjectLoaderProps) {
 	const [state, setState] = useState<ProjectState | null>(null);
 
 	useEffect(() => {
@@ -54,7 +61,11 @@ export function ProjectLoader({ projectPath, setProjectPath, onNewProject, onOpe
 	}, []);
 
 	if (state === null) {
-		return <div className="h-screen flex items-center justify-center bg-neutral-950 text-neutral-400 text-sm">Loading…</div>;
+		return (
+			<div className="h-screen flex items-center justify-center bg-neutral-950 text-neutral-400 text-sm">
+				Loading…
+			</div>
+		);
 	}
 
 	return (

@@ -1,5 +1,10 @@
+import {
+	useRef,
+	type ChangeEvent,
+	type MouseEvent as ReactMouseEvent,
+	type PointerEvent as ReactPointerEvent,
+} from "react";
 import type { ProjectContext } from "@/models/Context";
-import { useRef, type ChangeEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 
 interface FrameScrubProps {
 	mediaId: string;

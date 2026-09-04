@@ -34,102 +34,102 @@ const PATCH_HEIGHT = HEIGHT / ROWS; // 216
 const LEVELS = [0, 16, 32, 64, 96, 128, 160, 192, 224, 255];
 
 const MIXES = [
-  { name: "orange", rgb: [255, 128, 0] },
-  { name: "yellow", rgb: [255, 255, 0] },
-  { name: "lime", rgb: [128, 255, 0] },
-  { name: "mint", rgb: [0, 255, 128] },
-  { name: "cyan", rgb: [0, 255, 255] },
-  { name: "sky", rgb: [0, 128, 255] },
-  { name: "purple", rgb: [128, 0, 255] },
-  { name: "magenta", rgb: [255, 0, 255] },
-  { name: "hotpink", rgb: [255, 0, 128] },
-  { name: "skin", rgb: [220, 170, 140] },
+	{ name: "orange", rgb: [255, 128, 0] },
+	{ name: "yellow", rgb: [255, 255, 0] },
+	{ name: "lime", rgb: [128, 255, 0] },
+	{ name: "mint", rgb: [0, 255, 128] },
+	{ name: "cyan", rgb: [0, 255, 255] },
+	{ name: "sky", rgb: [0, 128, 255] },
+	{ name: "purple", rgb: [128, 0, 255] },
+	{ name: "magenta", rgb: [255, 0, 255] },
+	{ name: "hotpink", rgb: [255, 0, 128] },
+	{ name: "skin", rgb: [220, 170, 140] },
 ];
 
 function buildRawRgb() {
-  const pixels = new Uint8Array(WIDTH * HEIGHT * 3);
+	const pixels = new Uint8Array(WIDTH * HEIGHT * 3);
 
-  function fillPatch(col, row, red, green, blue) {
-    const x0 = col * PATCH_WIDTH;
-    const y0 = row * PATCH_HEIGHT;
+	function fillPatch(col, row, red, green, blue) {
+		const x0 = col * PATCH_WIDTH;
+		const y0 = row * PATCH_HEIGHT;
 
-    for (let y = 0; y < PATCH_HEIGHT; y++) {
-      for (let x = 0; x < PATCH_WIDTH; x++) {
-        const index = ((y0 + y) * WIDTH + (x0 + x)) * 3;
+		for (let y = 0; y < PATCH_HEIGHT; y++) {
+			for (let x = 0; x < PATCH_WIDTH; x++) {
+				const index = ((y0 + y) * WIDTH + (x0 + x)) * 3;
 
-        pixels[index] = red;
-        pixels[index + 1] = green;
-        pixels[index + 2] = blue;
-      }
-    }
-  }
+				pixels[index] = red;
+				pixels[index + 1] = green;
+				pixels[index + 2] = blue;
+			}
+		}
+	}
 
-  LEVELS.forEach((level, column) => {
-    fillPatch(column, 0, level, level, level);
-    fillPatch(column, 1, level, 0, 0);
-    fillPatch(column, 2, 0, level, 0);
-    fillPatch(column, 3, 0, 0, level);
-  });
+	LEVELS.forEach((level, column) => {
+		fillPatch(column, 0, level, level, level);
+		fillPatch(column, 1, level, 0, 0);
+		fillPatch(column, 2, 0, level, 0);
+		fillPatch(column, 3, 0, 0, level);
+	});
 
-  MIXES.forEach(({ rgb }, column) => {
-    fillPatch(column, 4, rgb[0], rgb[1], rgb[2]);
-  });
+	MIXES.forEach(({ rgb }, column) => {
+		fillPatch(column, 4, rgb[0], rgb[1], rgb[2]);
+	});
 
-  return pixels;
+	return pixels;
 }
 
 function buildSpec() {
-  const patches = [];
+	const patches = [];
 
-  function patchCenter(col, row) {
-    return {
-      column: col,
-      row,
-      centerX: col * PATCH_WIDTH + PATCH_WIDTH / 2,
-      centerY: row * PATCH_HEIGHT + PATCH_HEIGHT / 2,
-    };
-  }
+	function patchCenter(col, row) {
+		return {
+			column: col,
+			row,
+			centerX: col * PATCH_WIDTH + PATCH_WIDTH / 2,
+			centerY: row * PATCH_HEIGHT + PATCH_HEIGHT / 2,
+		};
+	}
 
-  LEVELS.forEach((level, column) => {
-    patches.push({
-      ...patchCenter(column, 0),
-      label: `gray-${level}`,
-      input: [level, level, level],
-    });
-    patches.push({
-      ...patchCenter(column, 1),
-      label: `red-${level}`,
-      input: [level, 0, 0],
-    });
-    patches.push({
-      ...patchCenter(column, 2),
-      label: `green-${level}`,
-      input: [0, level, 0],
-    });
-    patches.push({
-      ...patchCenter(column, 3),
-      label: `blue-${level}`,
-      input: [0, 0, level],
-    });
-  });
+	LEVELS.forEach((level, column) => {
+		patches.push({
+			...patchCenter(column, 0),
+			label: `gray-${level}`,
+			input: [level, level, level],
+		});
+		patches.push({
+			...patchCenter(column, 1),
+			label: `red-${level}`,
+			input: [level, 0, 0],
+		});
+		patches.push({
+			...patchCenter(column, 2),
+			label: `green-${level}`,
+			input: [0, level, 0],
+		});
+		patches.push({
+			...patchCenter(column, 3),
+			label: `blue-${level}`,
+			input: [0, 0, level],
+		});
+	});
 
-  MIXES.forEach(({ name, rgb }, column) => {
-    patches.push({
-      ...patchCenter(column, 4),
-      label: name,
-      input: rgb,
-    });
-  });
+	MIXES.forEach(({ name, rgb }, column) => {
+		patches.push({
+			...patchCenter(column, 4),
+			label: name,
+			input: rgb,
+		});
+	});
 
-  return {
-    width: WIDTH,
-    height: HEIGHT,
-    patchWidth: PATCH_WIDTH,
-    patchHeight: PATCH_HEIGHT,
-    rows: ROWS,
-    columns: COLS,
-    patches,
-  };
+	return {
+		width: WIDTH,
+		height: HEIGHT,
+		patchWidth: PATCH_WIDTH,
+		patchHeight: PATCH_HEIGHT,
+		rows: ROWS,
+		columns: COLS,
+		patches,
+	};
 }
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -140,10 +140,10 @@ const specPath = resolve(outputRoot, "reference", "stills", "calibration-spec.js
 const raw = buildRawRgb();
 
 await sharp(raw, {
-  raw: { width: WIDTH, height: HEIGHT, channels: 3 },
+	raw: { width: WIDTH, height: HEIGHT, channels: 3 },
 })
-  .png()
-  .toFile(imagePath);
+	.png()
+	.toFile(imagePath);
 
 await writeFile(specPath, JSON.stringify(buildSpec(), null, 2), "utf8");
 

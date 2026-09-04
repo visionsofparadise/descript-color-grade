@@ -5,9 +5,9 @@ export type WriteFileIpcReturn = undefined;
 export const WRITE_FILE_ACTION = "writeFile" as const;
 
 export class WriteFileRendererIpc extends AsyncRendererIpc<
-  typeof WRITE_FILE_ACTION,
-  WriteFileIpcParameters,
-  WriteFileIpcReturn
+	typeof WRITE_FILE_ACTION,
+	WriteFileIpcParameters,
+	WriteFileIpcReturn
 > {
-  action = WRITE_FILE_ACTION;
+	action = WRITE_FILE_ACTION;
 }

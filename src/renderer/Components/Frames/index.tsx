@@ -1,12 +1,12 @@
-import { Button } from "@/Components/UI/button";
-import type { ProjectContext } from "@/models/Context";
 import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy } from "@dnd-kit/sortable";
 import { Eraser, ImagePlus, Trash2 } from "lucide-react";
 import { retrack } from "opshot/react";
 import { useEffect, useRef, useState } from "react";
+import { Button } from "@/Components/UI/button";
 import { Frame } from "./Frame";
 import { computeGridDimensions } from "./utils/computeGridDimensions";
+import type { ProjectContext } from "@/models/Context";
 
 interface FramesProps {
 	onImportMedia: () => void;
@@ -101,19 +101,10 @@ export const Frames = retrack<FramesProps>(({ onImportMedia, onClearAllValues, o
 					</Button>
 				</div>
 			</div>
-			<div
-				ref={gridRef}
-				className="flex-1 min-h-0"
-			>
+			<div ref={gridRef} className="flex-1 min-h-0">
 				{hasMedia ? (
-					<DndContext
-						sensors={sensors}
-						onDragEnd={handleDragEnd}
-					>
-						<SortableContext
-							items={media.map((entry) => entry.id)}
-							strategy={rectSortingStrategy}
-						>
+					<DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+						<SortableContext items={media.map((entry) => entry.id)} strategy={rectSortingStrategy}>
 							<div
 								className="grid h-full"
 								style={{
@@ -122,11 +113,7 @@ export const Frames = retrack<FramesProps>(({ onImportMedia, onClearAllValues, o
 								}}
 							>
 								{media.map((entry) => (
-									<Frame
-										key={entry.id}
-										mediaId={entry.id}
-										context={context}
-									/>
+									<Frame key={entry.id} mediaId={entry.id} context={context} />
 								))}
 							</div>
 						</SortableContext>

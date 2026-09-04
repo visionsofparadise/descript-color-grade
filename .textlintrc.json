@@ -1,0 +1,12 @@
+{
+	"filters": {
+		"comments": true
+	},
+	"rules": {
+		"no-dead-link": {
+			"severity": "warning",
+			"ignore": ["http://**", "https://**"],
+			"checkRelative": true
+		}
+	}
+}

@@ -1,12 +1,12 @@
-import type { State } from "opshot";
 import { useMemo } from "react";
 import { useProjectKeyboardShortcuts } from "./hooks/useProjectKeyboardShortcuts";
-import type { AppContext, ProjectContext, Selection } from "./models/Context";
-import type { History, ProjectMeta } from "./models/History";
 import { NEUTRAL_PROPS, type Project } from "./models/Project";
 import { ProjectLayout } from "./ProjectLayout";
 import { importMedia } from "./utils/importMedia";
 import { isTempProject, saveProjectAs, saveProjectToPath } from "./utils/projectFile";
+import type { AppContext, ProjectContext, Selection } from "./models/Context";
+import type { History, ProjectMeta } from "./models/History";
+import type { State } from "opshot";
 
 interface ProjectViewProps {
 	project: State<Project, ProjectMeta, ProjectMeta>;
@@ -19,15 +19,33 @@ interface ProjectViewProps {
 	context: AppContext;
 }
 
-export function ProjectView({ project, selection, history, setProjectPath, onNewProject, onOpenProject, onCloseWindow, context: appContext }: ProjectViewProps) {
-	const context: ProjectContext = useMemo(() => ({ ...appContext, project, selection, history }), [appContext, project, selection, history]);
+export function ProjectView({
+	project,
+	selection,
+	history,
+	setProjectPath,
+	onNewProject,
+	onOpenProject,
+	onCloseWindow,
+	context: appContext,
+}: ProjectViewProps) {
+	const context: ProjectContext = useMemo(
+		() => ({ ...appContext, project, selection, history }),
+		[appContext, project, selection, history],
+	);
 
 	const handleSaveProjectAs = async () => {
 		try {
 			const currentPath = context.projectPath;
 			const defaultPath = currentPath !== null && !isTempProject(currentPath) ? currentPath : undefined;
 			const current = project.op.unwrap();
-			const chosen = await saveProjectAs(current.media, current.colorModel, current.videoTreatment, defaultPath, context);
+			const chosen = await saveProjectAs(
+				current.media,
+				current.colorModel,
+				current.videoTreatment,
+				defaultPath,
+				context,
+			);
 
 			if (chosen !== undefined) setProjectPath(chosen);
 		} catch (error) {

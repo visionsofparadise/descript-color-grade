@@ -10,10 +10,10 @@ Runs Descript's actual color grade shader, so the preview is pixel-identical to 
 
 Grab the latest build from the [Releases](https://github.com/visionsofparadise/descript-color-grade/releases) page:
 
-| Platform | File |
-|----------|------|
-| Windows  | `.exe` |
+| Platform | File             |
+| -------- | ---------------- |
+| Windows  | `.exe`           |
 | macOS    | `.zip` or `.dmg` |
-| Linux    | `.deb`, `.rpm` |
+| Linux    | `.deb`, `.rpm`   |
 
 Builds are unsigned, so your OS will likely show a warning on first launch.

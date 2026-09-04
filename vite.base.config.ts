@@ -53,7 +53,7 @@ export const getBuildDefine = (env: ConfigEnv<"build">) => {
 			};
 			return { ...acc, ...def };
 		},
-		{} as Record<string, any>
+		{} as Record<string, any>,
 	);
 
 	return define;

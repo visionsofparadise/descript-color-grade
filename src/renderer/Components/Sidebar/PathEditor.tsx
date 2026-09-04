@@ -1,6 +1,6 @@
+import { useEffect, useState, type ChangeEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { Input } from "@/Components/UI/input";
 import type { ProjectContext } from "@/models/Context";
-import { useEffect, useState, type ChangeEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 
 interface PathEditorProps {
 	entryIndex: number;

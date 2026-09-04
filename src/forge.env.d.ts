@@ -1,6 +1,7 @@
 /// <reference types="@electron-forge/plugin-vite/forge-vite-env" />
 
 declare module "electron-squirrel-startup" {
-  const handled: boolean;
-  export default handled;
+	const handled: boolean;
+
+	export default handled;
 }

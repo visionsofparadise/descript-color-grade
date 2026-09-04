@@ -36,6 +36,9 @@ build/Release
 node_modules/
 jspm_packages/
 
+# Fetched lint/gate binaries
+.tools/
+
 # TypeScript v1 declaration files
 typings/
 
@@ -47,6 +50,9 @@ typings/
 
 # Optional eslint cache
 .eslintcache
+
+# Optional stylelint cache
+.stylelintcache
 
 # Optional REPL history
 .node_repl_history

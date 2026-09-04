@@ -20,7 +20,19 @@ interface ProjectLayoutProps {
 }
 
 export const ProjectLayout = retrack<ProjectLayoutProps>(
-	({ onNewProject, onOpenProject, onSaveProject, onSaveProjectAs, onUndo, onRedo, onCloseWindow, onImportMedia, onClearAllValues, onClearAllFrames, context }) => (
+	({
+		onNewProject,
+		onOpenProject,
+		onSaveProject,
+		onSaveProjectAs,
+		onUndo,
+		onRedo,
+		onCloseWindow,
+		onImportMedia,
+		onClearAllValues,
+		onClearAllFrames,
+		context,
+	}) => (
 		<div className="h-screen flex flex-col bg-neutral-950 text-neutral-100">
 			<Titlebar>
 				<AppMenu

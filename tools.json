@@ -1,0 +1,48 @@
+{
+	"trivy": {
+		"version": "0.72.0",
+		"platforms": {
+			"windows-64bit": {
+				"url": "https://github.com/aquasecurity/trivy/releases/download/v0.72.0/trivy_0.72.0_windows-64bit.zip",
+				"sha256": "ed3cf122060f61818fe1f735fd97557954e16e10bc8b058af9852271cf2e91b3",
+				"archive": "trivy_0.72.0_windows-64bit.zip",
+				"binary": "trivy.exe"
+			},
+			"Linux-64bit": {
+				"url": "https://github.com/aquasecurity/trivy/releases/download/v0.72.0/trivy_0.72.0_Linux-64bit.tar.gz",
+				"sha256": "bbb64b9695866ce4a7a8f5c9592002c5961cab378577fa3f8a040df362b9b2ea",
+				"archive": "trivy_0.72.0_Linux-64bit.tar.gz",
+				"binary": "trivy"
+			},
+			"macOS-ARM64": {
+				"url": "https://github.com/aquasecurity/trivy/releases/download/v0.72.0/trivy_0.72.0_macOS-ARM64.tar.gz",
+				"sha256": "88f208680dc05da2b459e19b4f5aa2b4dc7c2117892ba4aab2ae63baba330016",
+				"archive": "trivy_0.72.0_macOS-ARM64.tar.gz",
+				"binary": "trivy"
+			}
+		}
+	},
+	"actionlint": {
+		"version": "1.7.7",
+		"platforms": {
+			"windows-64bit": {
+				"url": "https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_windows_amd64.zip",
+				"sha256": "7f12f1801bca3d480d67aaf7774f4c2a6359a3ca8eebe382c95c10c9704aa731",
+				"archive": "actionlint_1.7.7_windows_amd64.zip",
+				"binary": "actionlint.exe"
+			},
+			"Linux-64bit": {
+				"url": "https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_linux_amd64.tar.gz",
+				"sha256": "023070a287cd8cccd71515fedc843f1985bf96c436b7effaecce67290e7e0757",
+				"archive": "actionlint_1.7.7_linux_amd64.tar.gz",
+				"binary": "actionlint"
+			},
+			"macOS-ARM64": {
+				"url": "https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_darwin_arm64.tar.gz",
+				"sha256": "2693315b9093aeacb4ebd91a993fea54fc215057bf0da2659056b4bc033873db",
+				"archive": "actionlint_1.7.7_darwin_arm64.tar.gz",
+				"binary": "actionlint"
+			}
+		}
+	}
+}

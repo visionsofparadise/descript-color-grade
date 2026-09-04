@@ -1,11 +1,11 @@
+import { RotateCcw } from "lucide-react";
+import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { Button } from "@/Components/UI/button";
 import { Input } from "@/Components/UI/input";
 import { Slider } from "@/Components/UI/slider";
+import { clamp } from "@/utils/clamp";
 import type { ProjectContext } from "@/models/Context";
 import type { GradeProps } from "@/models/Project";
-import { clamp } from "@/utils/clamp";
-import { RotateCcw } from "lucide-react";
-import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 
 interface SliderRowProps {
 	entryIndex: number;
@@ -97,10 +97,12 @@ export function SliderRow({ entryIndex, propKey, label, value, context }: Slider
 		const inputElement = inputRef.current;
 
 		if (sliderElement) sliderElement.addEventListener("wheel", handleWheel, { passive: false });
+
 		if (inputElement) inputElement.addEventListener("wheel", handleWheel, { passive: false });
 
 		return () => {
 			if (sliderElement) sliderElement.removeEventListener("wheel", handleWheel);
+
 			if (inputElement) inputElement.removeEventListener("wheel", handleWheel);
 		};
 	}, []);

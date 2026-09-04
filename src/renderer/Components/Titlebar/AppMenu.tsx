@@ -1,6 +1,6 @@
-import type { AppContext, ProjectContext } from "@/models/Context";
 import { FilePlus, FolderOpen, Menu, Redo2, Save, SaveAll, Undo2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import type { AppContext, ProjectContext } from "@/models/Context";
 
 interface BaseAppMenuProps {
 	onNewProject: () => void;
@@ -75,6 +75,7 @@ export function AppMenu(props: AppMenuProps) {
 
 		const handleMouseDown = (event: MouseEvent) => {
 			if (containerRef.current?.contains(event.target as Node)) return;
+
 			setOpen(false);
 		};
 
@@ -102,7 +103,10 @@ export function AppMenu(props: AppMenuProps) {
 				<Menu className="w-4 h-4" aria-hidden="true" />
 			</button>
 			{open ? (
-				<div className="absolute top-full left-0 z-50 mt-0 bg-neutral-900 border border-neutral-800 py-1" style={{ minWidth: 280 }}>
+				<div
+					className="absolute top-full left-0 z-50 mt-0 bg-neutral-900 border border-neutral-800 py-1"
+					style={{ minWidth: 280 }}
+				>
 					{entries.map((entry, index) => {
 						if ("separator" in entry) {
 							return <div key={`sep-${index}`} className="my-1 mx-4 border-t border-neutral-800" />;
@@ -127,9 +131,21 @@ export function AppMenu(props: AppMenuProps) {
 										: "w-full flex items-center gap-3 px-4 py-2 text-neutral-100 hover:bg-neutral-800 focus-visible:outline-none focus-visible:bg-neutral-800"
 								}
 							>
-								<Icon className={disabled ? "w-3.5 h-3.5 text-neutral-700 shrink-0" : "w-3.5 h-3.5 text-neutral-400 shrink-0"} />
+								<Icon
+									className={
+										disabled
+											? "w-3.5 h-3.5 text-neutral-700 shrink-0"
+											: "w-3.5 h-3.5 text-neutral-400 shrink-0"
+									}
+								/>
 								<span className="flex-1 text-left text-sm">{entry.label}</span>
-								<span className={disabled ? "font-mono text-[11px] text-neutral-700 shrink-0" : "font-mono text-[11px] text-neutral-500 shrink-0"}>
+								<span
+									className={
+										disabled
+											? "font-mono text-[11px] text-neutral-700 shrink-0"
+											: "font-mono text-[11px] text-neutral-500 shrink-0"
+									}
+								>
 									{entry.shortcut}
 								</span>
 							</button>

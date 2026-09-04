@@ -1,4 +1,4 @@
 export interface FileFilter {
-  name: string;
-  extensions: Array<string>;
+	name: string;
+	extensions: Array<string>;
 }

@@ -5,9 +5,9 @@ export type ReadFileIpcReturn = string;
 export const READ_FILE_ACTION = "readFile" as const;
 
 export class ReadFileRendererIpc extends AsyncRendererIpc<
-  typeof READ_FILE_ACTION,
-  ReadFileIpcParameters,
-  ReadFileIpcReturn
+	typeof READ_FILE_ACTION,
+	ReadFileIpcParameters,
+	ReadFileIpcReturn
 > {
-  action = READ_FILE_ACTION;
+	action = READ_FILE_ACTION;
 }

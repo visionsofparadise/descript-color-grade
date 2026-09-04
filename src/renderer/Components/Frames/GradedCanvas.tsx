@@ -1,7 +1,14 @@
-import type { DescriptColorModel, VideoTreatment } from "@/models/Project";
 import { useEffect, useRef } from "react";
 import { buildUniforms } from "./utils/grade-uniforms";
-import { createGradeProgram, createTexture, destroyGradeProgram, drawGrade, uploadTexture, type GradeProgram } from "./utils/grade-webgl";
+import {
+	createGradeProgram,
+	createTexture,
+	destroyGradeProgram,
+	drawGrade,
+	uploadTexture,
+	type GradeProgram,
+} from "./utils/grade-webgl";
+import type { DescriptColorModel, VideoTreatment } from "@/models/Project";
 
 interface GradedCanvasProps {
 	src: string;
@@ -373,12 +380,7 @@ export function GradedCanvas({
 				overflow: "hidden",
 			}}
 		>
-			<canvas
-				ref={canvasRef}
-				aria-label={alt}
-				role="img"
-				style={{ flexShrink: 0 }}
-			/>
+			<canvas ref={canvasRef} aria-label={alt} role="img" style={{ flexShrink: 0 }} />
 		</div>
 	);
 }

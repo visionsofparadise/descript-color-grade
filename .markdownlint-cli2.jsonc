@@ -1,0 +1,21 @@
+{
+	"gitignore": true,
+	"ignores": ["**/.*/**"],
+	"noProgress": true,
+	"noBanner": true,
+	"config": {
+		"default": true,
+		"MD013": false,
+		"MD033": false,
+		"MD041": false,
+		"MD004": { "style": "dash" },
+		"MD007": { "indent": 3 },
+		"MD030": false,
+		"MD049": { "style": "underscore" },
+		"MD050": { "style": "asterisk" },
+		"MD010": { "spaces_per_tab": 3, "code_blocks": false },
+		"MD024": false,
+		"MD025": false,
+		"MD060": { "style": "consistent" },
+	},
+}

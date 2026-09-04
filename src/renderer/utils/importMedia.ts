@@ -1,7 +1,7 @@
-import type { AppContext } from "../models/Context";
-import type { MediaEntry } from "../models/Project";
 import { NEUTRAL_PROPS } from "../models/Project";
 import { detectKind } from "./media";
+import type { AppContext } from "../models/Context";
+import type { MediaEntry } from "../models/Project";
 
 export async function importMedia(context: AppContext): Promise<Array<MediaEntry>> {
 	const paths = await context.main.showOpenDialog({

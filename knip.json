@@ -1,0 +1,20 @@
+{
+	"$schema": "https://unpkg.com/knip@6/schema.json",
+	"project": ["src/**/*.{ts,tsx}"],
+	"entry": ["src/main/index.ts", "src/preload/index.ts"],
+	"ignore": [],
+	"ignoreDependencies": [
+		"prettier",
+		"tailwindcss",
+		"@commitlint/cli",
+		"@electron-forge/maker-deb",
+		"@electron-forge/maker-rpm",
+		"@electron-forge/maker-squirrel",
+		"@electron-forge/maker-zip",
+		"@electron-forge/plugin-fuses",
+		"@electron/fuses",
+		"@vitejs/plugin-react",
+		"textlint-filter-rule-comments",
+		"textlint-rule-no-dead-link"
+	]
+}
