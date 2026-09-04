@@ -1,91 +1,97 @@
 name: Release
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - package.json
+   push:
+      branches:
+         - main
+      paths:
+         - package.json
 
 permissions:
-  contents: write
+   contents: write
 
 jobs:
-  check-version:
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.check.outputs.version }}
-      changed: ${{ steps.check.outputs.changed }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
+   check-version:
+      runs-on: ubuntu-latest
+      outputs:
+         version: ${{ steps.check.outputs.version }}
+         changed: ${{ steps.check.outputs.changed }}
+      steps:
+         - uses: actions/checkout@v4
+           with:
+              fetch-depth: 2
 
-      - id: check
-        run: |
-          current=$(node -p "require('./package.json').version")
-          previous=$(git show HEAD~1:package.json | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).version")
-          echo "version=$current" >> "$GITHUB_OUTPUT"
-          if [ "$current" != "$previous" ]; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          fi
+         - id: check
+           run: |
+              current=$(node -p "require('./package.json').version")
+              previous=$(git show HEAD~1:package.json | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).version")
+              echo "version=$current" >> "$GITHUB_OUTPUT"
+              if [ "$current" != "$previous" ]; then
+                echo "changed=true" >> "$GITHUB_OUTPUT"
+              else
+                echo "changed=false" >> "$GITHUB_OUTPUT"
+              fi
 
-  build:
-    needs: check-version
-    if: needs.check-version.outputs.changed == 'true'
-    strategy:
-      matrix:
-        include:
-          - os: windows-latest
-            platform: win32
-          - os: macos-latest
-            platform: darwin
-          - os: ubuntu-latest
-            platform: linux
+   build:
+      needs: check-version
+      if: needs.check-version.outputs.changed == 'true'
+      strategy:
+         matrix:
+            include:
+               - os: windows-latest
+                 platform: win32
+               - os: macos-latest
+                 platform: darwin
+               - os: ubuntu-latest
+                 platform: linux
 
-    runs-on: ${{ matrix.os }}
+      runs-on: ${{ matrix.os }}
 
-    steps:
-      - uses: actions/checkout@v4
+      steps:
+         - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
+         - uses: actions/setup-node@v4
+           with:
+              node-version: 24
+              cache: npm
 
-      - run: npm ci
+         - name: Pin npm 12
+           run: npm install -g npm@12
 
-      - run: npm run make
+         - name: Enforce install-script allowlist
+           run: npm config set strict-allow-scripts=true --location=project
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: artifacts-${{ matrix.platform }}
-          path: out/make/**/*
-          if-no-files-found: error
+         - run: npm ci
 
-  release:
-    needs: [check-version, build]
-    runs-on: ubuntu-latest
+         - run: npm run make
 
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          merge-multiple: true
+         - uses: actions/upload-artifact@v4
+           with:
+              name: artifacts-${{ matrix.platform }}
+              path: out/make/**/*
+              if-no-files-found: error
 
-      - run: find artifacts -type f | head -50
+   release:
+      needs: [check-version, build]
+      runs-on: ubuntu-latest
 
-      - uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ needs.check-version.outputs.version }}
-          draft: false
-          files: |
-            artifacts/**/*.exe
-            artifacts/**/*.nupkg
-            artifacts/**/*.zip
-            artifacts/**/*.dmg
-            artifacts/**/*.deb
-            artifacts/**/*.rpm
-            artifacts/**/*.AppImage
+      steps:
+         - uses: actions/download-artifact@v4
+           with:
+              path: artifacts
+              merge-multiple: true
+
+         - run: find artifacts -type f | head -50
+
+         - uses: softprops/action-gh-release@v2
+           with:
+              tag_name: v${{ needs.check-version.outputs.version }}
+              draft: false
+              files: |
+                 artifacts/**/*.exe
+                 artifacts/**/*.nupkg
+                 artifacts/**/*.zip
+                 artifacts/**/*.dmg
+                 artifacts/**/*.deb
+                 artifacts/**/*.rpm
+                 artifacts/**/*.AppImage
