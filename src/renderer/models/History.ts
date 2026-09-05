@@ -7,7 +7,7 @@ export interface ProjectMeta {
 }
 export const projectMeta = createMeta<ProjectMeta>();
 
-export interface HistoryEntry {
+interface HistoryEntry {
 	transactionKey: string;
 	ops: Array<Op>;
 }

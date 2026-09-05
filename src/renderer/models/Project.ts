@@ -1,4 +1,5 @@
-export type MediaKind = "image" | "video";
+type MediaKind = "image" | "video";
+
 export type DescriptColorModel = "legacy" | "upgraded";
 export type VideoTreatment = "raw-source" | "descript-optimized";
 

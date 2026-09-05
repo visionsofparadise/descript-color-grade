@@ -16,19 +16,20 @@ export type Mat4 = [
 	[number, number, number, number],
 ];
 
-export type Vec4 = [number, number, number, number];
+type Vec4 = [number, number, number, number];
+
 export type Vec3 = [number, number, number];
 
-export type DescriptColorModel = "legacy" | "upgraded";
+type DescriptColorModel = "legacy" | "upgraded";
 
-export interface WhiteBalanceUniforms {
+interface WhiteBalanceUniforms {
 	enabled: boolean;
 	temperature: number;
 	tint: number;
 	filter: Vec3;
 }
 
-export interface ColorAdjustmentUniforms {
+interface ColorAdjustmentUniforms {
 	colorMatrix: Mat4;
 	colorVector: Vec4;
 	colorOffset: Vec4;
@@ -45,10 +46,6 @@ export interface BuildUniformOptions {
 }
 
 export const DEFAULT_WHITE_BALANCE_FILTER: Vec3 = [0.93, 0.54, 0];
-
-export function clamp(value: number, lo: number, hi: number): number {
-	return value < lo ? lo : value > hi ? hi : value;
-}
 
 function identityMat4(): Mat4 {
 	return [
