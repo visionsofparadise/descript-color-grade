@@ -12,6 +12,7 @@
 		"**/*.test.tsx",
 		"**/__fixtures__/**",
 		"**/types/*.d.ts",
+		"reference/stills/descript-golden.json",
 		"**/package.json",
 		"package-lock.json",
 		"pnpm-lock.yaml",
