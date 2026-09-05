@@ -6,6 +6,12 @@
 			{
 				"ignoreAtRules": ["theme", "utility", "variant", "custom-variant", "source", "plugin", "apply", "reference"]
 			}
+		],
+		"at-rule-prelude-no-invalid": [
+			true,
+			{
+				"ignoreAtRules": ["theme", "utility", "variant", "custom-variant", "source", "plugin", "apply", "reference"]
+			}
 		]
 	},
 	"ignoreFiles": ["**/node_modules/**", "**/dist/**", "**/out/**", "**/build/**", "**/coverage/**", "**/.*/**"]
