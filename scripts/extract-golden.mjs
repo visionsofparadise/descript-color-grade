@@ -7,59 +7,24 @@
 // replace those PNGs with fresh exports and re-run this script; commit
 // both the updated PNGs and the regenerated descript-golden.json.
 
-import sharp from "sharp";
-import { readFile, readdir, writeFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
-import { dirname, resolve, basename } from "node:path";
+import { writeFile } from "node:fs/promises";
+import { basename, resolve } from "node:path";
+import { FRAMES_DIRECTORY, listFrameFiles, readCalibrationSpec, samplePatches } from "./utils/calibrationSampling.mjs";
 
-const here = dirname(fileURLToPath(import.meta.url));
-const workspaceRoot = resolve(here, "..");
-const specPath = resolve(workspaceRoot, "reference", "stills", "calibration-spec.json");
-const framesDir = resolve(workspaceRoot, "reference", "stills");
-const goldenPath = resolve(workspaceRoot, "reference", "stills", "descript-golden.json");
+const goldenPath = resolve(FRAMES_DIRECTORY, "descript-golden.json");
 
-const spec = JSON.parse(await readFile(specPath, "utf8"));
+const spec = await readCalibrationSpec();
 const grayPatches = spec.patches.filter((p) => p.row === 0);
 const grayInputs = grayPatches.map((p) => p.input[0]);
 
-function sampleArea(buffer, width, channels, cx, cy, radius) {
-	let sumR = 0;
-	let sumG = 0;
-	let sumB = 0;
-	let count = 0;
+async function samplesByLabel(framePath) {
+	const samples = await samplePatches(framePath, spec, spec.patches);
+	const byLabel = {};
 
-	for (let dy = -radius; dy <= radius; dy++) {
-		for (let dx = -radius; dx <= radius; dx++) {
-			const i = ((cy + dy) * width + (cx + dx)) * channels;
+	for (const { patch, rgb } of samples) byLabel[patch.label] = rgb;
 
-			sumR += buffer[i];
-			sumG += buffer[i + 1];
-			sumB += buffer[i + 2];
-			count++;
-		}
-	}
-
-	return [Math.round(sumR / count), Math.round(sumG / count), Math.round(sumB / count)];
+	return byLabel;
 }
-
-async function samplePatches(path) {
-	const { data, info } = await sharp(path).removeAlpha().raw().toBuffer({ resolveWithObject: true });
-	const scaleX = info.width / spec.width;
-	const scaleY = info.height / spec.height;
-	const patchWidth = spec.patchWidth * scaleX;
-	const patchHeight = spec.patchHeight * scaleY;
-	const radius = Math.max(2, Math.floor(Math.min(patchWidth, patchHeight) / 6));
-
-	const samples = {};
-	for (const patch of spec.patches) {
-		const x = Math.round(patch.centerX * scaleX);
-		const y = Math.round(patch.centerY * scaleY);
-		samples[patch.label] = sampleArea(data, info.width, info.channels, x, y, radius);
-	}
-	return samples;
-}
-
-const files = (await readdir(framesDir)).filter((n) => n.endsWith(".png") && n !== "baseline.png").sort();
 
 const golden = {
 	grayInputs,
@@ -67,15 +32,15 @@ const golden = {
 	properties: {},
 };
 
-for (const file of files) {
-	const name = basename(file, ".png");
+for (const framePath of await listFrameFiles()) {
+	const name = basename(framePath, ".png");
 	const match = /^([a-z]+)-(minus|plus)(\d+)$/.exec(name);
 
 	if (!match) continue;
 
 	const [, property, sign, strength] = match;
 	const key = `${sign === "minus" ? "-" : "+"}${strength}`;
-	const samples = await samplePatches(resolve(framesDir, file));
+	const samples = await samplesByLabel(framePath);
 
 	// Legacy shape: `gray` is the gray-row RGB array.
 	const gray = grayPatches.map((p) => samples[p.label]);
