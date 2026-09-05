@@ -30,7 +30,6 @@ export const MEDIA_SCHEME_CONFIG = {
 } as const;
 
 const parseMediaPath = (url: URL): string => {
-	// Chromium normalizes media:///C:/path to media://c/path (treats C: as host).
 	if (process.platform === "win32" && url.host.length === 1) {
 		return `${url.host.toUpperCase()}:${decodeURIComponent(url.pathname)}`;
 	}
@@ -62,9 +61,6 @@ const parseRangeHeader = (rangeHeader: string, fileSize: number): { start: numbe
 };
 
 const toWebStream = (nodeStream: ReadStream): ReadableStream<Uint8Array> => {
-	// Swallow late ERR_STREAM_PREMATURE_CLOSE fired after Chromium aborts a Range
-	// request mid-seek. The cancel already destroyed the stream; without this
-	// listener Node treats it as unhandled and logs noise.
 	nodeStream.on("error", () => {});
 
 	return Readable.toWeb(nodeStream) as ReadableStream<Uint8Array>;

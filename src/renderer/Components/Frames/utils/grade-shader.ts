@@ -1,5 +1,3 @@
-// Calibration depends on bit-exact match with Descript's bundle. Modify only when re-extracting.
-
 export const VERTEX_SOURCE = `
 attribute vec2 aPosition;
 varying vec2 vTexCoord;
