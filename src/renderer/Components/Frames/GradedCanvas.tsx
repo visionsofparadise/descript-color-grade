@@ -11,7 +11,7 @@ import {
 import type { DescriptColorModel, VideoTreatment } from "@/models/Project";
 
 interface GradedCanvasProps {
-	src: string;
+	url: string;
 	alt: string;
 	kind: "image" | "video";
 	exposure: number;
@@ -30,7 +30,7 @@ interface GradedCanvasProps {
 }
 
 export function GradedCanvas({
-	src,
+	url,
 	alt,
 	kind,
 	exposure,
@@ -263,7 +263,7 @@ export function GradedCanvas({
 				render();
 			};
 
-			image.src = src;
+			image.setAttribute("src", url);
 
 			return (): void => {
 				cancelled = true;
@@ -297,17 +297,17 @@ export function GradedCanvas({
 		video.addEventListener("loadedmetadata", handleLoadedMetadata);
 		video.addEventListener("seeked", handleSeeked);
 
-		video.src = src;
+		video.setAttribute("src", url);
 		videoRef.current = video;
 
 		return (): void => {
 			cancelled = true;
 			video.removeEventListener("loadedmetadata", handleLoadedMetadata);
 			video.removeEventListener("seeked", handleSeeked);
-			video.src = "";
+			video.setAttribute("src", "");
 			videoRef.current = null;
 		};
-	}, [src, kind]);
+	}, [url, kind]);
 
 	useEffect(() => {
 		if (kind !== "video") return;

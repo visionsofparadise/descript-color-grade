@@ -100,7 +100,7 @@ export const Frame = retrack<FrameProps>(({ mediaId, context }) => {
 				className="relative flex-1 min-h-0 overflow-hidden cursor-grab active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-100 touch-none"
 			>
 				<GradedCanvas
-					src={url}
+					url={url}
 					alt={name}
 					kind={kind}
 					frameTime={entry.frameTime}
