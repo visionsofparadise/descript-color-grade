@@ -102,11 +102,20 @@ export async function openProject(path: string, context: AppContext): Promise<Pr
 	};
 }
 
-export async function createNewProjectFile(context: AppContext): Promise<string> {
+export async function tempProjectPathOf(context: AppContext): Promise<string> {
 	const tempDir = await context.main.getTempPath();
-	const path = join(tempDir, `${TEMP_PROJECT_PREFIX}${crypto.randomUUID()}.dcg`);
 
-	await context.main.writeFile(path, serializeProject([], DEFAULT_COLOR_MODEL, DEFAULT_VIDEO_TREATMENT));
+	return join(tempDir, `${TEMP_PROJECT_PREFIX}${crypto.randomUUID()}.dcg`);
+}
 
-	return path;
+export async function createNewProject(path: string, context: AppContext): Promise<Project> {
+	const project: Project = {
+		media: [],
+		colorModel: DEFAULT_COLOR_MODEL,
+		videoTreatment: DEFAULT_VIDEO_TREATMENT,
+	};
+
+	await context.main.writeFile(path, serializeProject(project.media, project.colorModel, project.videoTreatment));
+
+	return project;
 }

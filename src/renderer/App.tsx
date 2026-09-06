@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { EmptyView } from "./EmptyView";
 import { useAppKeyboardShortcuts } from "./hooks/useAppKeyboardShortcuts";
 import { ProjectLoader } from "./ProjectLoader";
-import { createNewProjectFile, pickProjectPath } from "./utils/projectFile";
+import { pickProjectPath, tempProjectPathOf } from "./utils/projectFile";
 import type { AppContext } from "./models/Context";
 
 export function App() {
@@ -12,7 +12,7 @@ export function App() {
 
 	const handleNewProject = async () => {
 		try {
-			const path = await createNewProjectFile(context);
+			const path = await tempProjectPathOf(context);
 
 			setProjectPath(path);
 		} catch (error) {

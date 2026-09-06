@@ -2,7 +2,7 @@ import { createMutableState } from "opshot";
 import { useEffect, useState } from "react";
 import { createHistory, type History } from "./models/History";
 import { ProjectView } from "./ProjectView";
-import { isTempProject, openProject } from "./utils/projectFile";
+import { createNewProject, isTempProject, openProject } from "./utils/projectFile";
 import type { AppContext, Selection } from "./models/Context";
 import type { Project } from "./models/Project";
 
@@ -34,7 +34,11 @@ export function ProjectLoader({
 	useEffect(() => {
 		let cancelled = false;
 
-		openProject(projectPath, context)
+		const loaded = isTempProject(projectPath)
+			? createNewProject(projectPath, context)
+			: openProject(projectPath, context);
+
+		loaded
 			.then((data) => {
 				const selectedId = data.media[0]?.id ?? null;
 				const project = createMutableState(data);
@@ -46,16 +50,20 @@ export function ProjectLoader({
 				setState({ project, selection, history });
 			})
 			.catch((error: unknown) => {
-				console.error("open project failed:", error);
+				if (cancelled) return;
+
+				console.error("load project failed:", error);
 			});
 
 		return () => {
 			cancelled = true;
 
 			if (isTempProject(projectPath)) {
-				context.main.deleteFile(projectPath).catch((error: unknown) => {
-					console.error("temp project cleanup failed:", error);
-				});
+				loaded
+					.then(() => context.main.deleteFile(projectPath))
+					.catch((error: unknown) => {
+						console.error("temp project cleanup failed:", error);
+					});
 			}
 		};
 	}, []);
