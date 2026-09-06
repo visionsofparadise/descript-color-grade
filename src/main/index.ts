@@ -4,7 +4,7 @@ import squirrelStartup from "electron-squirrel-startup";
 import { ASYNC_MAIN_IPCS } from "../shared/ipc/asyncMainIpcs";
 import { getContentSecurityPolicy } from "./getContentSecurityPolicy";
 import { MEDIA_SCHEME_CONFIG, registerMediaProtocol } from "./registerMediaProtocol";
-import { SMOKE_DIALOG_DIR } from "./smoke/dialogQueue";
+import { SMOKE_DIALOG_DIR, SMOKE_TEMP_DIR } from "./smoke/dialogQueue";
 import { SMOKE_ASYNC_MAIN_IPCS } from "./smoke/smokeAsyncMainIpcs";
 
 if (squirrelStartup) {
@@ -13,7 +13,7 @@ if (squirrelStartup) {
 
 protocol.registerSchemesAsPrivileged([MEDIA_SCHEME_CONFIG]);
 
-const smokeTempDir = process.env.DCG_SMOKE_TEMP_DIR;
+const smokeTempDir = app.isPackaged ? undefined : process.env[SMOKE_TEMP_DIR];
 
 if (smokeTempDir) {
 	app.setPath("temp", smokeTempDir);
@@ -52,7 +52,8 @@ const createMainWindow = (): BrowserWindow => {
 		});
 	});
 
-	const asyncMainIpcs = process.env[SMOKE_DIALOG_DIR] ? SMOKE_ASYNC_MAIN_IPCS : ASYNC_MAIN_IPCS;
+	const useSmokeIpcs = !app.isPackaged && Boolean(process.env[SMOKE_DIALOG_DIR]);
+	const asyncMainIpcs = useSmokeIpcs ? SMOKE_ASYNC_MAIN_IPCS : ASYNC_MAIN_IPCS;
 
 	for (const AsyncMainIpcCtor of asyncMainIpcs) {
 		new AsyncMainIpcCtor().register({ browserWindow: mainWindow });

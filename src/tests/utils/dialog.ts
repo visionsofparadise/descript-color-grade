@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { SmokeApp } from "./app";
 
@@ -7,7 +7,11 @@ function appendQueuedResponse(app: SmokeApp, fileName: string, response: unknown
 	const queue = existsSync(filePath) ? (JSON.parse(readFileSync(filePath, "utf8")) as Array<unknown>) : [];
 
 	queue.push(response);
-	writeFileSync(filePath, JSON.stringify(queue), "utf8");
+
+	const pendingPath = `${filePath}.pending`;
+
+	writeFileSync(pendingPath, JSON.stringify(queue), "utf8");
+	renameSync(pendingPath, filePath);
 }
 
 export function queueOpenDialog(app: SmokeApp, paths: Array<string> | null): void {
