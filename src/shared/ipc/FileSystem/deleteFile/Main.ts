@@ -6,7 +6,7 @@ export class DeleteFileMainIpc extends AsyncMainIpc<DeleteFileIpcParameters, Del
 	action = DELETE_FILE_ACTION;
 
 	async handler(filePath: string, _dependencies: IpcHandlerDependencies): Promise<DeleteFileIpcReturn> {
-		await fs.unlink(filePath);
+		await fs.rm(filePath, { force: true });
 
 		return undefined;
 	}
