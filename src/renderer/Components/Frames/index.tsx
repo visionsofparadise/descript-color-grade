@@ -1,7 +1,7 @@
 import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy } from "@dnd-kit/sortable";
 import { Eraser, ImagePlus, Trash2 } from "lucide-react";
-import { retrack } from "opshot/react";
+import { scope } from "opshot/react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/Components/UI/button";
 import { Frame } from "./Frame";
@@ -15,7 +15,7 @@ interface FramesProps {
 	context: ProjectContext;
 }
 
-export const Frames = retrack<FramesProps>(({ onImportMedia, onClearAllValues, onClearAllFrames, context }) => {
+export const Frames = scope<FramesProps>(({ onImportMedia, onClearAllValues, onClearAllFrames, context }) => {
 	const { project } = context;
 	const { media } = project;
 
@@ -33,9 +33,7 @@ export const Frames = retrack<FramesProps>(({ onImportMedia, onClearAllValues, o
 
 		if (oldIndex < 0 || newIndex < 0) return;
 
-		project.mutate((mutable) => {
-			mutable.media = arrayMove(mutable.media, oldIndex, newIndex);
-		});
+		project.media = arrayMove(project.media, oldIndex, newIndex);
 	};
 
 	useEffect(() => {

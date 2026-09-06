@@ -1,7 +1,6 @@
 import type { Main } from "../global";
-import type { History, ProjectMeta } from "./History";
+import type { History } from "./History";
 import type { Project } from "./Project";
-import type { State } from "opshot";
 
 export interface Selection {
 	selectedId: string | null;
@@ -13,7 +12,7 @@ export interface AppContext {
 }
 
 export interface ProjectContext extends AppContext {
-	project: State<Project, ProjectMeta, ProjectMeta>;
-	selection: State<Selection>;
+	project: Project;
+	selection: Selection;
 	history: History;
 }

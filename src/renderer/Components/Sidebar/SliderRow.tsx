@@ -1,4 +1,5 @@
 import { RotateCcw } from "lucide-react";
+import { batch } from "opshot";
 import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { Button } from "@/Components/UI/button";
 import { Input } from "@/Components/UI/input";
@@ -29,14 +30,11 @@ export function SliderRow({ entryIndex, propKey, label, value, context }: Slider
 	}, [value]);
 
 	const write = (next: number, transactionKey: string) => {
-		project.mutate(
-			(mutable) => {
-				const target = mutable.media[entryIndex];
+		batch(() => {
+			const target = project.media[entryIndex];
 
-				if (target) target.props[propKey] = next;
-			},
-			{ transactionKey },
-		);
+			if (target) target.props[propKey] = next;
+		}, transactionKey);
 	};
 
 	const commitDiscrete = (next: number) => {

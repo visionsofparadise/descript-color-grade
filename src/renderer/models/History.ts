@@ -1,98 +1,94 @@
-import { applyPatch } from "fast-json-patch";
-import { createMeta, createState, ref, type Op, type State } from "opshot";
+import { batch, createMutableState, ignore, subscribe, type Operation } from "opshot";
 
-export interface ProjectMeta {
-	replay?: boolean;
-	transactionKey?: string;
-}
-export const projectMeta = createMeta<ProjectMeta>();
+const replayMeta = Symbol("replay");
+
+type ProjectMeta = string | typeof replayMeta | undefined;
 
 interface HistoryEntry {
-	transactionKey: string;
-	ops: Array<Op>;
+	readonly transactionKey: string;
+	readonly operations: Array<Operation<ProjectMeta>>;
 }
 
-interface HistoryData {
+export interface History {
 	index: number;
-	stack: Array<HistoryEntry>;
-	undo: () => void;
-	redo: () => void;
+	readonly stack: Array<HistoryEntry>;
 	readonly canUndo: boolean;
 	readonly canRedo: boolean;
+	readonly undo: () => void;
+	readonly redo: () => void;
 }
 
-export type History = State<HistoryData>;
+const revert = (operation: Operation<ProjectMeta>) => {
+	if (operation.kind === "add") Reflect.deleteProperty(operation.node, operation.key);
+	else operation.node[operation.key] = operation.before;
+};
 
-export function createHistory<T extends object>(target: State<T, ProjectMeta, ProjectMeta>): History {
-	const history = createState<HistoryData>((mutate, get) => ({
+const apply = (operation: Operation<ProjectMeta>) => {
+	if (operation.kind === "delete") Reflect.deleteProperty(operation.node, operation.key);
+	else operation.node[operation.key] = operation.after;
+};
+
+export function createHistory(target: object): History {
+	const history: History = createMutableState<History>({
 		index: -1,
-		stack: ref(new Array<HistoryEntry>()),
-		undo: () => {
-			const { index, stack } = get();
-			const entry = stack[index];
-
-			if (!entry) return;
-
-			target.mutate(
-				(mutable) => {
-					applyPatch(
-						mutable,
-						[...entry.ops].reverse().map((op) => op.undo),
-					);
-				},
-				{ replay: true },
-			);
-
-			mutate((mutable) => {
-				mutable.index -= 1;
-			});
-		},
-		redo: () => {
-			const { index, stack } = get();
-			const entry = stack[index + 1];
-
-			if (!entry) return;
-
-			target.mutate(
-				(mutable) => {
-					applyPatch(
-						mutable,
-						entry.ops.map((op) => op.do),
-					);
-				},
-				{ replay: true },
-			);
-
-			mutate((mutable) => {
-				mutable.index += 1;
-			});
-		},
+		stack: ignore(new Array<HistoryEntry>()),
 		get canUndo() {
 			return this.index >= 0;
 		},
 		get canRedo() {
 			return this.index < this.stack.length - 1;
 		},
-	}));
+		undo: () => {
+			const entry = history.stack[history.index];
 
-	target.op.subscribe((_state, ops, meta) => {
-		if (meta.replay) return;
+			if (entry === undefined) return;
 
-		const transactionKey = meta.transactionKey;
+			batch(() => {
+				for (const operation of [...entry.operations].reverse()) revert(operation);
+			}, replayMeta);
 
-		history.mutate((mutable) => {
-			const current = mutable.stack[mutable.index];
+			history.index -= 1;
+		},
+		redo: () => {
+			const entry = history.stack[history.index + 1];
 
-			if (transactionKey !== undefined && current?.transactionKey === transactionKey) {
-				current.ops.push(...ops);
+			if (entry === undefined) return;
 
-				return;
-			}
+			batch(() => {
+				for (const operation of entry.operations) apply(operation);
+			}, replayMeta);
 
-			mutable.stack.splice(mutable.index + 1);
-			mutable.stack.push({ transactionKey: transactionKey ?? crypto.randomUUID(), ops: [...ops] });
-			mutable.index = mutable.stack.length - 1;
-		});
+			history.index += 1;
+		},
+	});
+
+	const record = (transactionKey: string | undefined, operations: ReadonlyArray<Operation<ProjectMeta>>) => {
+		const current = history.stack[history.index];
+
+		if (transactionKey !== undefined && current?.transactionKey === transactionKey) {
+			current.operations.push(...operations);
+
+			return;
+		}
+
+		history.stack.splice(history.index + 1);
+		history.stack.push({ transactionKey: transactionKey ?? crypto.randomUUID(), operations: [...operations] });
+		history.index = history.stack.length - 1;
+	};
+
+	subscribe<ProjectMeta>(target, (operations) => {
+		const groups = new Map<ProjectMeta, Array<Operation<ProjectMeta>>>();
+
+		for (const operation of operations) {
+			if (operation.meta === replayMeta) continue;
+
+			const group = groups.get(operation.meta);
+
+			if (group) group.push(operation);
+			else groups.set(operation.meta, [operation]);
+		}
+
+		for (const [meta, group] of groups) record(typeof meta === "string" ? meta : undefined, group);
 	});
 
 	return history;

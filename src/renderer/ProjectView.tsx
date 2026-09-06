@@ -5,12 +5,11 @@ import { ProjectLayout } from "./ProjectLayout";
 import { importMedia } from "./utils/importMedia";
 import { isTempProject, saveProjectAs, saveProjectToPath } from "./utils/projectFile";
 import type { AppContext, ProjectContext, Selection } from "./models/Context";
-import type { History, ProjectMeta } from "./models/History";
-import type { State } from "opshot";
+import type { History } from "./models/History";
 
 interface ProjectViewProps {
-	project: State<Project, ProjectMeta, ProjectMeta>;
-	selection: State<Selection>;
+	project: Project;
+	selection: Selection;
 	history: History;
 	setProjectPath: (path: string) => void;
 	onNewProject: () => void;
@@ -38,11 +37,10 @@ export function ProjectView({
 		try {
 			const currentPath = context.projectPath;
 			const defaultPath = currentPath !== null && !isTempProject(currentPath) ? currentPath : undefined;
-			const current = project.op.unwrap();
 			const chosen = await saveProjectAs(
-				current.media,
-				current.colorModel,
-				current.videoTreatment,
+				project.media,
+				project.colorModel,
+				project.videoTreatment,
 				defaultPath,
 				context,
 			);
@@ -63,9 +61,7 @@ export function ProjectView({
 		}
 
 		try {
-			const current = project.op.unwrap();
-
-			await saveProjectToPath(current.media, current.colorModel, current.videoTreatment, currentPath, context);
+			await saveProjectToPath(project.media, project.colorModel, project.videoTreatment, currentPath, context);
 		} catch (error) {
 			console.error("save project failed:", error);
 		}
@@ -77,34 +73,23 @@ export function ProjectView({
 
 			if (loaded.length === 0) return;
 
-			project.mutate((mutable) => {
-				mutable.media.push(...loaded);
-			});
+			project.media.push(...loaded);
 
-			selection.mutate((mutable) => {
-				mutable.selectedId ??= loaded[0]?.id ?? null;
-			});
+			selection.selectedId ??= loaded[0]?.id ?? null;
 		} catch (error) {
 			console.error("import media failed:", error);
 		}
 	};
 
 	const handleClearAllValues = () => {
-		project.mutate((mutable) => {
-			for (const entry of mutable.media) {
-				entry.props = { ...NEUTRAL_PROPS };
-			}
-		});
+		for (const entry of project.media) {
+			entry.props = { ...NEUTRAL_PROPS };
+		}
 	};
 
 	const handleClearAllFrames = () => {
-		project.mutate((mutable) => {
-			mutable.media = [];
-		});
-
-		selection.mutate((mutable) => {
-			mutable.selectedId = null;
-		});
+		project.media = [];
+		selection.selectedId = null;
 	};
 
 	const handleUndo = () => {

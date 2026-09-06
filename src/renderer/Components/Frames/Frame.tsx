@@ -1,7 +1,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Maximize2, Minimize2, X } from "lucide-react";
-import { retrack } from "opshot/react";
+import { scope } from "opshot/react";
 import { basename } from "pathe";
 import {
 	useState,
@@ -23,7 +23,7 @@ interface FrameProps {
 	context: ProjectContext;
 }
 
-export const Frame = retrack<FrameProps>(({ mediaId, context }) => {
+export const Frame = scope<FrameProps>(({ mediaId, context }) => {
 	const { project, selection } = context;
 
 	const entry = project.media.find((item) => item.id === mediaId);
@@ -47,9 +47,7 @@ export const Frame = retrack<FrameProps>(({ mediaId, context }) => {
 	};
 
 	const handleSelect = () => {
-		selection.mutate((mutable) => {
-			mutable.selectedId = mediaId;
-		});
+		selection.selectedId = mediaId;
 	};
 
 	const handleSelectKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
@@ -62,15 +60,11 @@ export const Frame = retrack<FrameProps>(({ mediaId, context }) => {
 	const handleRemove = (event: ReactMouseEvent<HTMLButtonElement>) => {
 		event.stopPropagation();
 
-		project.mutate((mutable) => {
-			const removedIndex = mutable.media.findIndex((item) => item.id === mediaId);
+		const removedIndex = project.media.findIndex((item) => item.id === mediaId);
 
-			if (removedIndex >= 0) mutable.media.splice(removedIndex, 1);
-		});
+		if (removedIndex >= 0) project.media.splice(removedIndex, 1);
 
-		selection.mutate((mutable) => {
-			if (mutable.selectedId === mediaId) mutable.selectedId = null;
-		});
+		if (selection.selectedId === mediaId) selection.selectedId = null;
 	};
 
 	const handleToggleFit = (event: ReactMouseEvent<HTMLButtonElement>) => {

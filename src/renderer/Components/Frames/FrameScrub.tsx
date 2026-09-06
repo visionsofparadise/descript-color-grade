@@ -1,3 +1,4 @@
+import { batch } from "opshot";
 import {
 	useRef,
 	type ChangeEvent,
@@ -22,14 +23,11 @@ export function FrameScrub({ mediaId, name, duration, frameTime, context }: Fram
 	const handleScrub = (event: ChangeEvent<HTMLInputElement>) => {
 		const next = Number(event.target.value);
 
-		project.mutate(
-			(mutable) => {
-				const target = mutable.media.find((item) => item.id === mediaId);
+		batch(() => {
+			const target = project.media.find((item) => item.id === mediaId);
 
-				if (target) target.frameTime = next;
-			},
-			{ transactionKey: scrubKeyRef.current },
-		);
+			if (target) target.frameTime = next;
+		}, scrubKeyRef.current);
 	};
 
 	const handleScrubEnd = () => {

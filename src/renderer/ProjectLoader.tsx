@@ -1,6 +1,6 @@
-import { createState, type State } from "opshot";
+import { createMutableState } from "opshot";
 import { useEffect, useState } from "react";
-import { createHistory, projectMeta, type History, type ProjectMeta } from "./models/History";
+import { createHistory, type History } from "./models/History";
 import { ProjectView } from "./ProjectView";
 import { isTempProject, openProject } from "./utils/projectFile";
 import type { AppContext, Selection } from "./models/Context";
@@ -16,8 +16,8 @@ interface ProjectLoaderProps {
 }
 
 interface ProjectState {
-	project: State<Project, ProjectMeta, ProjectMeta>;
-	selection: State<Selection>;
+	project: Project;
+	selection: Selection;
 	history: History;
 }
 
@@ -37,8 +37,8 @@ export function ProjectLoader({
 		openProject(projectPath, context)
 			.then((data) => {
 				const selectedId = data.media[0]?.id ?? null;
-				const project = createState(data, projectMeta);
-				const selection = createState<Selection>({ selectedId });
+				const project = createMutableState(data);
+				const selection = createMutableState<Selection>({ selectedId });
 				const history = createHistory(project);
 
 				if (cancelled) return;

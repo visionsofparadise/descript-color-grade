@@ -1,4 +1,4 @@
-import { retrack } from "opshot/react";
+import { scope } from "opshot/react";
 import { Frames } from "./Components/Frames";
 import { Sidebar } from "./Components/Sidebar";
 import { Titlebar } from "./Components/Titlebar";
@@ -19,7 +19,7 @@ interface ProjectLayoutProps {
 	context: ProjectContext;
 }
 
-export const ProjectLayout = retrack<ProjectLayoutProps>(
+export const ProjectLayout = scope<ProjectLayoutProps>(
 	({
 		onNewProject,
 		onOpenProject,

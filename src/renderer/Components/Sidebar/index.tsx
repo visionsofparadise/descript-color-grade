@@ -1,5 +1,5 @@
 import { RotateCcw } from "lucide-react";
-import { retrack } from "opshot/react";
+import { scope } from "opshot/react";
 import { Button } from "@/Components/UI/button";
 import { NEUTRAL_PROPS, type GradeProps } from "@/models/Project";
 import { PathEditor } from "./PathEditor";
@@ -25,7 +25,7 @@ const SLIDERS: ReadonlyArray<SliderDefinition> = [
 	{ key: "shadows", label: "Shadows" },
 ];
 
-export const Sidebar = retrack<SidebarProps>(({ context }) => {
+export const Sidebar = scope<SidebarProps>(({ context }) => {
 	const { project, selection } = context;
 	const selectedId = selection.selectedId;
 
@@ -44,11 +44,9 @@ export const Sidebar = retrack<SidebarProps>(({ context }) => {
 	}
 
 	const handleResetAll = () => {
-		project.mutate((mutable) => {
-			const target = mutable.media[entryIndex];
+		const target = project.media[entryIndex];
 
-			if (target) target.props = { ...NEUTRAL_PROPS };
-		});
+		if (target) target.props = { ...NEUTRAL_PROPS };
 	};
 
 	return (

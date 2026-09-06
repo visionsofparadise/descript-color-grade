@@ -25,14 +25,13 @@ export function PathEditor({ entryIndex, value, context }: PathEditorProps) {
 			return;
 		}
 
-		project.mutate((mutable) => {
-			const target = mutable.media[entryIndex];
+		const target = project.media[entryIndex];
 
-			if (target) {
-				target.path = trimmed;
-				target.frameTime = 0;
-			}
-		});
+		if (target) {
+			// eslint-disable-next-line react-hooks/immutability
+			target.path = trimmed;
+			target.frameTime = 0;
+		}
 	};
 
 	const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
