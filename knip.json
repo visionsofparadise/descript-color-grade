@@ -1,8 +1,9 @@
 {
 	"$schema": "https://unpkg.com/knip@6/schema.json",
 	"project": ["src/**/*.{ts,tsx}"],
-	"entry": ["src/main/index.ts", "src/preload/index.ts"],
+	"entry": ["src/main/index.ts", "src/preload/index.ts", "src/tests/**/*.ts"],
 	"ignore": [],
+	"ignoreBinaries": ["ffmpeg"],
 	"ignoreDependencies": [
 		"prettier",
 		"tailwindcss",

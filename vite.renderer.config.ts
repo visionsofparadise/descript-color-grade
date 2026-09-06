@@ -20,6 +20,11 @@ export default defineConfig((env) => {
 				external: [...builtinModules, ...builtinModules.map((m) => `node:${m}`), "electron"],
 			},
 		},
+		server: {
+			watch: {
+				ignored: ["**/.smoke-profile/**"],
+			},
+		},
 		plugins: [react(), pluginExposeRenderer(name), pluginHotRestart("reload")],
 		resolve: {
 			preserveSymlinks: true,
