@@ -11,6 +11,7 @@ interface HistoryEntry {
 
 export interface History {
 	index: number;
+	length: number;
 	readonly stack: Array<HistoryEntry>;
 	readonly canUndo: boolean;
 	readonly canRedo: boolean;
@@ -31,12 +32,13 @@ const apply = (operation: Operation<ProjectMeta>) => {
 export function createHistory(target: object): History {
 	const history: History = createMutableState<History>({
 		index: -1,
+		length: 0,
 		stack: ignore(new Array<HistoryEntry>()),
 		get canUndo() {
 			return this.index >= 0;
 		},
 		get canRedo() {
-			return this.index < this.stack.length - 1;
+			return this.index < this.length - 1;
 		},
 		undo: () => {
 			const entry = history.stack[history.index];
@@ -69,12 +71,14 @@ export function createHistory(target: object): History {
 
 		if (transactionKey !== undefined && current?.transactionKey === transactionKey) {
 			current.operations.push(...operations);
+			history.length = history.stack.length;
 
 			return;
 		}
 
 		history.stack.push({ transactionKey: transactionKey ?? crypto.randomUUID(), operations: [...operations] });
 		history.index = history.stack.length - 1;
+		history.length = history.stack.length;
 	};
 
 	subscribe<ProjectMeta>(target, (operations) => {

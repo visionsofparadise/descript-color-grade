@@ -1,4 +1,4 @@
-import { batch, createMutableState, flush } from "opshot";
+import { batch, createMutableState, flush, subscribe } from "opshot";
 import { describe, expect, it } from "vitest";
 
 import { createHistory } from "./History";
@@ -328,6 +328,40 @@ describe("History", () => {
 		history.undo();
 
 		expect(target.value).toBe(0);
+	});
+
+	it("a resumed transaction reports the dropped forward entries", () => {
+		const { target, history } = createFixture();
+
+		batch(() => {
+			target.value = 1;
+		}, "drag-1");
+
+		flush(target);
+
+		target.value = 7;
+
+		flush(target);
+
+		history.undo();
+
+		flush(history);
+
+		let emissions = 0;
+		const unsubscribe = subscribe(history, () => {
+			emissions += 1;
+		});
+
+		batch(() => {
+			target.value = 2;
+		}, "drag-1");
+
+		flush(target);
+		flush(history);
+		unsubscribe();
+
+		expect(emissions).toBe(1);
+		expect(history.canRedo).toBe(false);
 	});
 
 	it("undo of an added key removes it and a key holding undefined keeps it", () => {
