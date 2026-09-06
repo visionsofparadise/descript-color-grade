@@ -267,6 +267,7 @@ export default tseslint.config(
 			"@typescript-eslint/no-unsafe-function-type": "off",
 			"@typescript-eslint/prefer-for-of": "off",
 			"react-hooks/exhaustive-deps": "off",
+			"react-hooks/immutability": "off",
 
 			"@stylistic/padding-line-between-statements": [
 				"error",

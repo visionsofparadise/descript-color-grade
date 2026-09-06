@@ -28,7 +28,6 @@ export function PathEditor({ entryIndex, value, context }: PathEditorProps) {
 		const target = project.media[entryIndex];
 
 		if (target) {
-			// eslint-disable-next-line react-hooks/immutability
 			target.path = trimmed;
 			target.frameTime = 0;
 		}
