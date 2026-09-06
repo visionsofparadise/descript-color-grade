@@ -25,23 +25,27 @@ import { BASELINE_RUN_MS, startApp, type SmokeApp } from "./utils/app";
 import {
 	readFrameNames,
 	isMenuItemDisabled,
+	readMenuLabels,
 	readProject,
+	readScrubValue,
 	sleep,
 	readSliderValue,
 	readSliderValues,
+	waitForFrameOrder,
 	waitForRenderer,
+	waitForScrubValue,
+	waitForSliderValue,
+	waitForSliderValues,
 } from "./utils/page";
 import { hasFfmpeg, seedFixtures, type Fixtures } from "./utils/seed";
 import type { GradeProps, MediaEntry } from "../renderer/models/Project";
 import type { Page } from "puppeteer-core";
 
-const APP_MENU_SELECTOR = 'button[aria-label="App menu"]';
 const PATH_INPUT_SELECTOR = 'input[aria-label="Path"]';
 const WAIT_TIMEOUT_MS = 60_000;
-const SETTLE_TIMEOUT_MS = 15_000;
 const FILE_POLL_MS = 100;
 const LOAD_RATIO = 2;
-const SCRUB_SECONDS = 1;
+const SCRUB_SECONDS = 1.05;
 
 const SLIDER_LABELS: Record<keyof GradeProps, string> = {
 	saturation: "Saturation",
@@ -67,12 +71,12 @@ let fixtures: Fixtures;
 let imageNames: Array<string>;
 let runStartedAt = 0;
 
-function mediaEntry(filePath: string, kind: "image" | "video"): MediaEntry {
+function mediaEntryOf(filePath: string, kind: "image" | "video"): MediaEntry {
 	return { id: randomUUID(), path: filePath, kind, frameTime: 0, props: { ...NEUTRAL_PROPS } };
 }
 
-function imageEntries(): Array<MediaEntry> {
-	return fixtures.images.map((filePath) => mediaEntry(filePath, "image"));
+function buildImageEntries(): Array<MediaEntry> {
+	return fixtures.images.map((filePath) => mediaEntryOf(filePath, "image"));
 }
 
 function writeProjectFile(filePath: string, media: ReadonlyArray<MediaEntry>): void {
@@ -114,67 +118,38 @@ async function waitForSavedProject(filePath: string): Promise<SavedProject> {
 	throw new Error(`saved project ${filePath} never appeared`);
 }
 
-async function waitForFrameList(page: Page, names: ReadonlyArray<string>): Promise<void> {
-	await page.waitForFunction(
-		(expected: ReadonlyArray<string>) => {
-			const labels = Array.from(document.querySelectorAll('[aria-label^="Select "]')).map((element) =>
-				(element.getAttribute("aria-label") ?? "").replace(/^Select /, ""),
-			);
-
-			return labels.length === expected.length && labels.every((label, index) => label === expected[index]);
-		},
-		{ timeout: WAIT_TIMEOUT_MS },
-		names,
-	);
-}
-
 async function expectFrameList(page: Page, names: ReadonlyArray<string>): Promise<void> {
-	await waitForFrameList(page, names).catch(() => undefined);
+	await waitForFrameOrder(page, names).catch(() => undefined);
 
 	expect(await readFrameNames(page)).toEqual([...names]);
 }
 
 async function expectSliderValue(page: Page, label: string, value: number): Promise<void> {
-	await page
-		.waitForFunction(
-			(sliderLabel: string, expected: number) => {
-				const slider = document.querySelector(`[data-slot="slider"][aria-label="${sliderLabel}"]`);
-				const input = slider?.parentElement?.querySelector('input[data-slot="input"]');
-
-				return input instanceof HTMLInputElement && Number(input.value) === expected;
-			},
-			{ timeout: SETTLE_TIMEOUT_MS },
-			label,
-			value,
-		)
-		.catch(() => undefined);
+	await waitForSliderValue(page, label, value).catch(() => undefined);
 
 	expect(await readSliderValue(page, label)).toBe(value);
 }
 
 async function expectSliderValues(page: Page, expected: Record<string, number>): Promise<void> {
-	await page
-		.waitForFunction(
-			(target: Record<string, number>) => {
-				const readings: Record<string, number> = {};
-
-				for (const slider of Array.from(document.querySelectorAll('[data-slot="slider"]'))) {
-					const label = slider.getAttribute("aria-label") ?? "";
-					const input = slider.parentElement?.querySelector('input[data-slot="input"]');
-
-					if (input instanceof HTMLInputElement) readings[label] = Number(input.value);
-				}
-
-				const keys = Object.keys(target);
-
-				return keys.length === Object.keys(readings).length && keys.every((key) => readings[key] === target[key]);
-			},
-			{ timeout: SETTLE_TIMEOUT_MS },
-			expected,
-		)
-		.catch(() => undefined);
+	await waitForSliderValues(page, expected).catch(() => undefined);
 
 	expect(await readSliderValues(page)).toEqual(expected);
+}
+
+async function expectScrubValue(page: Page, name: string, value: number): Promise<void> {
+	await waitForScrubValue(page, name, (reading) => reading === value).catch(() => undefined);
+
+	expect(await readScrubValue(page, name)).toBe(value);
+}
+
+async function readCommittedScrubValue(page: Page, name: string): Promise<number> {
+	await waitForScrubValue(page, name, (reading) => reading > 0).catch(() => undefined);
+
+	const scrubbed = await readScrubValue(page, name);
+
+	expect(scrubbed).toBeGreaterThan(0);
+
+	return scrubbed;
 }
 
 async function waitForSelected(page: Page, name: string): Promise<void> {
@@ -194,34 +169,19 @@ async function selectFrameAndWait(name: string): Promise<void> {
 	await waitForSelected(app.page, name);
 }
 
-async function menuLabels(page: Page): Promise<Array<string>> {
-	await page.waitForSelector(APP_MENU_SELECTOR, { timeout: WAIT_TIMEOUT_MS });
-	await page.click(APP_MENU_SELECTOR);
-	await page.waitForFunction(
-		() => Array.from(document.querySelectorAll("button span")).some((span) => span.textContent === "Close Window"),
-		{ timeout: WAIT_TIMEOUT_MS },
-	);
-
-	const labels = await page.$$eval("button span", (spans) => spans.map((span) => span.textContent ?? ""));
-
-	await page.click(APP_MENU_SELECTOR);
-
-	return labels;
-}
-
 async function loadSeed(name: string, media: ReadonlyArray<MediaEntry>): Promise<void> {
-	await app.page.waitForSelector(APP_MENU_SELECTOR, { timeout: WAIT_TIMEOUT_MS });
+	await waitForRenderer(app.page);
 
 	if ((await readFrameNames(app.page)).length > 0) {
 		await clearAllFrames(app.page);
-		await waitForFrameList(app.page, []);
+		await waitForFrameOrder(app.page, []);
 	}
 
 	const filePath = join(app.savesDir, `${name}.dcg`);
 
 	writeProjectFile(filePath, media);
 	await openProject(app, filePath);
-	await waitForFrameList(
+	await waitForFrameOrder(
 		app.page,
 		media.map((entry) => basename(entry.path)),
 	);
@@ -235,14 +195,6 @@ async function saveAndReload(filePath: string, firstFrameName: string): Promise<
 	await waitForSelected(app.page, firstFrameName);
 
 	return saved;
-}
-
-async function scrubValue(page: Page, videoName: string): Promise<number> {
-	return page.$eval(`input[aria-label="Scrub ${videoName}"]`, (element) => {
-		if (!(element instanceof HTMLInputElement)) throw new Error("The scrub control is not an input");
-
-		return Number(element.value);
-	});
 }
 
 beforeAll(async () => {
@@ -278,7 +230,7 @@ describe("Boot", () => {
 	});
 
 	it("carries no Undo or Redo in the app menu while no project is loaded", async () => {
-		const labels = await menuLabels(app.page);
+		const labels = await readMenuLabels(app.page);
 
 		expect(labels).toContain("New Project");
 		expect(labels).toContain("Open Project");
@@ -289,7 +241,7 @@ describe("Boot", () => {
 });
 
 describe("Import", () => {
-	it("imports three images, and one undo empties the grid while one redo restores it", async () => {
+	it("imports three images as one entry the menu reads back after an undo and a redo", async () => {
 		const seedPath = join(app.savesDir, "import.dcg");
 
 		writeProjectFile(seedPath, []);
@@ -307,23 +259,22 @@ describe("Import", () => {
 
 		await redo(app.page);
 		await expectFrameList(app.page, imageNames);
-	});
 
-	it("carries Undo enabled and Redo disabled in the app menu once a project is open", async () => {
 		expect(await isMenuItemDisabled(app.page, "Undo")).toBe(false);
 		expect(await isMenuItemDisabled(app.page, "Redo")).toBe(true);
 	});
 });
 
 describe("Slider drag", () => {
-	it("folds a five-tick drag into one undo entry", async () => {
-		await loadSeed("drag", imageEntries());
+	it("folds a five-tick drag into one undo entry opened on the first move", async () => {
+		await loadSeed("drag", buildImageEntries());
 		await selectFrameAndWait(imageNames[0] ?? "");
 
-		await dragSlider(app.page, "Saturation", [-40, -10, 20, 50, 70]);
-		await expectSliderValue(app.page, "Saturation", 70);
+		await dragSlider(app.page, "Saturation", [-40, -10, 20, 50, 70], async () => {
+			expect(await isMenuItemDisabled(app.page, "Undo")).toBe(false);
+		});
 
-		expect(await isMenuItemDisabled(app.page, "Undo")).toBe(false);
+		await expectSliderValue(app.page, "Saturation", 70);
 
 		await undo(app.page);
 		await expectSliderValues(app.page, NEUTRAL_SLIDER_VALUES);
@@ -332,7 +283,7 @@ describe("Slider drag", () => {
 
 describe("Numeric input", () => {
 	it("commits a typed value as one undo entry", async () => {
-		await loadSeed("numeric", imageEntries());
+		await loadSeed("numeric", buildImageEntries());
 		await selectFrameAndWait(imageNames[0] ?? "");
 
 		await typeSliderValue(app.page, "Contrast", 42);
@@ -345,7 +296,7 @@ describe("Numeric input", () => {
 
 describe("Discrete steps", () => {
 	it("gives the arrow step and the wheel step one undo entry each", async () => {
-		await loadSeed("steps", imageEntries());
+		await loadSeed("steps", buildImageEntries());
 		await selectFrameAndWait(imageNames[0] ?? "");
 
 		await arrowStepSlider(app.page, "Exposure", "up");
@@ -364,7 +315,7 @@ describe("Discrete steps", () => {
 
 describe("Resets", () => {
 	it("walks the single reset, the per-cell reset, and the clear back one entry at a time", async () => {
-		await loadSeed("resets", imageEntries());
+		await loadSeed("resets", buildImageEntries());
 
 		const firstName = imageNames[0] ?? "";
 		const secondName = imageNames[1] ?? "";
@@ -408,7 +359,7 @@ describe("Resets", () => {
 
 describe("Remove", () => {
 	it("drops the selected cell, clears the selection, and restores the cell unselected", async () => {
-		await loadSeed("remove", imageEntries());
+		await loadSeed("remove", buildImageEntries());
 
 		const firstName = imageNames[0] ?? "";
 
@@ -425,7 +376,7 @@ describe("Remove", () => {
 
 describe("Reorder", () => {
 	it("moves the first cell past the second and restores the order on undo", async () => {
-		await loadSeed("reorder", imageEntries());
+		await loadSeed("reorder", buildImageEntries());
 
 		const [first = "", second = "", third = ""] = imageNames;
 
@@ -439,7 +390,7 @@ describe("Reorder", () => {
 
 describe("Path edit", () => {
 	it("follows the committed path and restores the previous one on undo", async () => {
-		await loadSeed("path-edit", imageEntries());
+		await loadSeed("path-edit", buildImageEntries());
 
 		const [first = "", second = "", third = ""] = imageNames;
 
@@ -452,7 +403,7 @@ describe("Path edit", () => {
 	});
 });
 
-describe.skipIf(!hasFfmpeg())("Path edit on a video", () => {
+describe.skipIf(!hasFfmpeg())("Path edit on a video, skipped where ffmpeg is absent", () => {
 	it("restores the path and the frame time together on one undo", async () => {
 		const videoPath = fixtures.video;
 
@@ -463,17 +414,15 @@ describe.skipIf(!hasFfmpeg())("Path edit on a video", () => {
 		const thirdImage = fixtures.images[2] ?? "";
 
 		await loadSeed("path-edit-video", [
-			mediaEntry(fixtures.images[0] ?? "", "image"),
-			mediaEntry(fixtures.images[1] ?? "", "image"),
-			mediaEntry(videoPath, "video"),
+			mediaEntryOf(fixtures.images[0] ?? "", "image"),
+			mediaEntryOf(fixtures.images[1] ?? "", "image"),
+			mediaEntryOf(videoPath, "video"),
 		]);
 
 		await selectFrameAndWait(videoName);
 		await scrubFrame(app.page, videoName, SCRUB_SECONDS);
 
-		const scrubbed = await scrubValue(app.page, videoName);
-
-		expect(scrubbed).toBeGreaterThan(0);
+		const scrubbed = await readCommittedScrubValue(app.page, videoName);
 
 		await editPath(app.page, thirdImage);
 		await expectFrameList(app.page, [first, second, basename(thirdImage)]);
@@ -488,8 +437,8 @@ describe.skipIf(!hasFfmpeg())("Path edit on a video", () => {
 	});
 });
 
-describe.skipIf(!hasFfmpeg())("Scrub", () => {
-	it("returns the frame time on one undo", async () => {
+describe.skipIf(!hasFfmpeg())("Scrub, skipped where ffmpeg is absent", () => {
+	it("folds the scrub into one undo entry and undoes the import that carried the clip", async () => {
 		const videoPath = fixtures.video;
 
 		if (videoPath === undefined) throw new Error("ffmpeg answered but seeded no clip");
@@ -497,31 +446,22 @@ describe.skipIf(!hasFfmpeg())("Scrub", () => {
 		const first = imageNames[0] ?? "";
 		const videoName = basename(videoPath);
 
-		await loadSeed("scrub", imageEntries());
+		await loadSeed("scrub", buildImageEntries());
 		await importMedia(app, [videoPath]);
+		await expectFrameList(app.page, [...imageNames, videoName]);
+
+		await undo(app.page);
+		await expectFrameList(app.page, imageNames);
+
+		await redo(app.page);
 		await expectFrameList(app.page, [...imageNames, videoName]);
 
 		await selectFrameAndWait(videoName);
 		await scrubFrame(app.page, videoName, SCRUB_SECONDS);
-
-		const scrubbed = await scrubValue(app.page, videoName);
-
-		expect(scrubbed).toBeGreaterThan(0);
+		await readCommittedScrubValue(app.page, videoName);
 
 		await undo(app.page);
-		await app.page
-			.waitForFunction(
-				(selector: string) => {
-					const element = document.querySelector(selector);
-
-					return element instanceof HTMLInputElement && Number(element.value) === 0;
-				},
-				{ timeout: SETTLE_TIMEOUT_MS },
-				`input[aria-label="Scrub ${videoName}"]`,
-			)
-			.catch(() => undefined);
-
-		expect(await scrubValue(app.page, videoName)).toBe(0);
+		await expectScrubValue(app.page, videoName, 0);
 
 		const saved = await saveAndReload(join(app.savesDir, "scrub-saved.dcg"), first);
 
@@ -532,7 +472,7 @@ describe.skipIf(!hasFfmpeg())("Scrub", () => {
 
 describe("Clear All Frames", () => {
 	it("empties the grid and restores every cell unselected on one undo", async () => {
-		await loadSeed("clear-frames", imageEntries());
+		await loadSeed("clear-frames", buildImageEntries());
 		await selectFrameAndWait(imageNames[0] ?? "");
 
 		await clearAllFrames(app.page);
@@ -547,7 +487,7 @@ describe("Clear All Frames", () => {
 
 describe("Save round trip", () => {
 	it("reopens a saved project with the grid and the seven values the file holds", async () => {
-		await loadSeed("round-trip-source", imageEntries());
+		await loadSeed("round-trip-source", buildImageEntries());
 
 		const [first = "", second = "", third = ""] = imageNames;
 
@@ -567,7 +507,7 @@ describe("Save round trip", () => {
 		expect(savedProps.saturation).toBe(33);
 		expect(savedProps.exposure).toBe(-12);
 
-		await loadSeed("round-trip-reset", [mediaEntry(fixtures.images[1] ?? "", "image")]);
+		await loadSeed("round-trip-reset", [mediaEntryOf(fixtures.images[1] ?? "", "image")]);
 		await selectFrameAndWait(second);
 		await expectSliderValues(app.page, NEUTRAL_SLIDER_VALUES);
 

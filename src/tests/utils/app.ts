@@ -6,7 +6,7 @@ import { join, resolve } from "node:path";
 import puppeteer, { type Browser, type Page } from "puppeteer-core";
 import { sleep } from "./page";
 
-export const BASELINE_RUN_MS = 52_000;
+export const BASELINE_RUN_MS = 23_000;
 
 const REPO_ROOT = resolve(import.meta.dirname, "../../..");
 const PROFILE_DIR = join(REPO_ROOT, ".smoke-profile");

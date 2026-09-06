@@ -4,6 +4,9 @@ import type { KeyInput, Page } from "puppeteer-core";
 const APP_MENU_SELECTOR = 'button[aria-label="App menu"]';
 const MENU_SENTINEL = "Close Window";
 const RENDER_TIMEOUT_MS = 300_000;
+const LIST_TIMEOUT_MS = 60_000;
+const SETTLE_TIMEOUT_MS = 15_000;
+const POLL_INTERVAL_MS = 100;
 
 export interface Point {
 	readonly x: number;
@@ -19,12 +22,32 @@ export function sleep(ms: number): Promise<void> {
 	return new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
 }
 
+export async function waitForCondition(
+	description: string,
+	timeoutMs: number,
+	matches: () => Promise<boolean>,
+): Promise<void> {
+	const deadline = Date.now() + timeoutMs;
+
+	while (Date.now() < deadline) {
+		if (await matches()) return;
+
+		await sleep(POLL_INTERVAL_MS);
+	}
+
+	throw new Error(`Timed out waiting for ${description}`);
+}
+
 export function sliderSelectorOf(label: string, slot: string): string {
 	return `[data-slot="slider"][aria-label="${label}"] [data-slot="${slot}"]`;
 }
 
 export function sliderInputSelectorOf(label: string): string {
 	return `div:has(> [data-slot="slider"][aria-label="${label}"]) input[data-slot="input"]`;
+}
+
+export function scrubSelectorOf(name: string): string {
+	return `input[aria-label="Scrub ${name}"]`;
 }
 
 export function centerOf(box: ElementBox): Point {
@@ -99,6 +122,40 @@ export async function readSliderValue(page: Page, label: string): Promise<number
 	return value;
 }
 
+export async function waitForSliderValue(page: Page, label: string, value: number): Promise<void> {
+	await waitForCondition(
+		`slider row ${label} to read ${String(value)}`,
+		SETTLE_TIMEOUT_MS,
+		async () => (await readSliderValues(page))[label] === value,
+	);
+}
+
+export async function waitForSliderValues(page: Page, expected: Record<string, number>): Promise<void> {
+	const labels = Object.keys(expected);
+
+	await waitForCondition(`the slider rows to read ${JSON.stringify(expected)}`, SETTLE_TIMEOUT_MS, async () => {
+		const readings = await readSliderValues(page);
+
+		return (
+			labels.length === Object.keys(readings).length && labels.every((label) => readings[label] === expected[label])
+		);
+	});
+}
+
+export async function readScrubValue(page: Page, name: string): Promise<number> {
+	return page.$eval(scrubSelectorOf(name), (element) => {
+		if (!(element instanceof HTMLInputElement)) throw new Error("The scrub control is not an input");
+
+		return Number(element.value);
+	});
+}
+
+export async function waitForScrubValue(page: Page, name: string, matches: (value: number) => boolean): Promise<void> {
+	await waitForCondition(`the scrub control of ${name}`, SETTLE_TIMEOUT_MS, async () =>
+		matches(await readScrubValue(page, name)),
+	);
+}
+
 export async function readFrameNames(page: Page): Promise<Array<string>> {
 	return page.$$eval('[aria-label^="Select "]', (elements) =>
 		elements.map((element) => (element.getAttribute("aria-label") ?? "").replace(/^Select /, "")),
@@ -106,17 +163,19 @@ export async function readFrameNames(page: Page): Promise<Array<string>> {
 }
 
 export async function waitForFrameNames(page: Page, names: ReadonlyArray<string>): Promise<void> {
-	await page.waitForFunction(
-		(expected: ReadonlyArray<string>) => {
-			const labels = Array.from(document.querySelectorAll('[aria-label^="Select "]')).map((element) =>
-				(element.getAttribute("aria-label") ?? "").replace(/^Select /, ""),
-			);
+	await waitForCondition(`the cells ${names.join(", ")}`, LIST_TIMEOUT_MS, async () => {
+		const labels = await readFrameNames(page);
 
-			return expected.every((name) => labels.includes(name));
-		},
-		{},
-		names,
-	);
+		return names.every((name) => labels.includes(name));
+	});
+}
+
+export async function waitForFrameOrder(page: Page, names: ReadonlyArray<string>): Promise<void> {
+	await waitForCondition(`the cell order ${names.join(", ")}`, LIST_TIMEOUT_MS, async () => {
+		const labels = await readFrameNames(page);
+
+		return labels.length === names.length && labels.every((label, index) => label === names[index]);
+	});
 }
 
 export async function clickByAriaLabel(page: Page, label: string): Promise<void> {
@@ -156,14 +215,27 @@ export async function dragBetween(page: Page, from: Point, to: Point, steps: num
 	await page.mouse.up();
 }
 
-async function menuItemState(page: Page, label: string, activate: boolean): Promise<boolean> {
-	await page.click(APP_MENU_SELECTOR);
+async function toggleAppMenu(page: Page): Promise<void> {
+	await page.waitForSelector(APP_MENU_SELECTOR, { timeout: LIST_TIMEOUT_MS });
+	await page.$eval(APP_MENU_SELECTOR, (element) => {
+		if (!(element instanceof HTMLElement)) throw new Error("The app menu control is not an element");
+
+		element.click();
+	});
+}
+
+async function openAppMenu(page: Page): Promise<void> {
+	await toggleAppMenu(page);
 	await page.waitForFunction(
 		(sentinel: string) =>
 			Array.from(document.querySelectorAll("button span")).some((span) => span.textContent === sentinel),
-		{},
+		{ timeout: LIST_TIMEOUT_MS },
 		MENU_SENTINEL,
 	);
+}
+
+async function menuItemState(page: Page, label: string, activate: boolean): Promise<boolean> {
+	await openAppMenu(page);
 
 	const disabled = await page.evaluate(
 		(itemLabel: string, shouldActivate: boolean): boolean | null => {
@@ -181,7 +253,7 @@ async function menuItemState(page: Page, label: string, activate: boolean): Prom
 	);
 
 	if (disabled === null) {
-		await page.click(APP_MENU_SELECTOR);
+		await toggleAppMenu(page);
 
 		throw new Error(`App menu item ${label} was not found`);
 	}
@@ -189,10 +261,20 @@ async function menuItemState(page: Page, label: string, activate: boolean): Prom
 	return disabled;
 }
 
+export async function readMenuLabels(page: Page): Promise<Array<string>> {
+	await openAppMenu(page);
+
+	const labels = await page.$$eval("button span", (spans) => spans.map((span) => span.textContent));
+
+	await toggleAppMenu(page);
+
+	return labels;
+}
+
 export async function isMenuItemDisabled(page: Page, label: string): Promise<boolean> {
 	const disabled = await menuItemState(page, label, false);
 
-	await page.click(APP_MENU_SELECTOR);
+	await toggleAppMenu(page);
 
 	return disabled;
 }
