@@ -1,8 +1,9 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { SMOKE_DIALOG_DIR } from "./env";
 
-export const SMOKE_TEMP_DIR = "DCG_SMOKE_TEMP_DIR";
-export const SMOKE_DIALOG_DIR = "DCG_SMOKE_DIALOG_DIR";
+export const OPEN_DIALOG_QUEUE_FILE_NAME = "showOpenDialog.json";
+export const SAVE_DIALOG_QUEUE_FILE_NAME = "showSaveDialog.json";
 
 export function shiftQueuedResponse<Answer>(fileName: string): Answer | undefined {
 	const directory = process.env[SMOKE_DIALOG_DIR];

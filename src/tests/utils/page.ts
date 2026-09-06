@@ -22,7 +22,7 @@ export function sleep(ms: number): Promise<void> {
 	return new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
 }
 
-export async function waitForCondition(
+async function waitForCondition(
 	description: string,
 	timeoutMs: number,
 	matches: () => Promise<boolean>,
@@ -67,7 +67,7 @@ export async function waitForRenderer(page: Page): Promise<void> {
 	await page.waitForSelector(APP_MENU_SELECTOR, { timeout: RENDER_TIMEOUT_MS });
 }
 
-export async function defocus(page: Page): Promise<void> {
+async function defocus(page: Page): Promise<void> {
 	await page.evaluate(() => {
 		const active = document.activeElement;
 

@@ -4,7 +4,7 @@ import squirrelStartup from "electron-squirrel-startup";
 import { ASYNC_MAIN_IPCS } from "../shared/ipc/asyncMainIpcs";
 import { getContentSecurityPolicy } from "./getContentSecurityPolicy";
 import { MEDIA_SCHEME_CONFIG, registerMediaProtocol } from "./registerMediaProtocol";
-import { SMOKE_DIALOG_DIR, SMOKE_TEMP_DIR } from "./smoke/dialogQueue";
+import { SMOKE_DIALOG_DIR, SMOKE_TEMP_DIR } from "./smoke/env";
 import { SMOKE_ASYNC_MAIN_IPCS } from "./smoke/smokeAsyncMainIpcs";
 
 if (squirrelStartup) {

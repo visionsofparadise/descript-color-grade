@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { OPEN_DIALOG_QUEUE_FILE_NAME, SAVE_DIALOG_QUEUE_FILE_NAME } from "../../main/smoke/dialogQueue";
 import type { SmokeApp } from "./app";
 
 function appendQueuedResponse(app: SmokeApp, fileName: string, response: unknown): void {
@@ -15,9 +16,9 @@ function appendQueuedResponse(app: SmokeApp, fileName: string, response: unknown
 }
 
 export function queueOpenDialog(app: SmokeApp, paths: Array<string> | null): void {
-	appendQueuedResponse(app, "showOpenDialog.json", paths);
+	appendQueuedResponse(app, OPEN_DIALOG_QUEUE_FILE_NAME, paths);
 }
 
 export function queueSaveDialog(app: SmokeApp, path: string | null): void {
-	appendQueuedResponse(app, "showSaveDialog.json", path);
+	appendQueuedResponse(app, SAVE_DIALOG_QUEUE_FILE_NAME, path);
 }

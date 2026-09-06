@@ -1,0 +1,2 @@
+export const SMOKE_TEMP_DIR = "DCG_SMOKE_TEMP_DIR";
+export const SMOKE_DIALOG_DIR = "DCG_SMOKE_DIALOG_DIR";

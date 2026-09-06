@@ -4,6 +4,7 @@ import http from "node:http";
 import { createServer } from "node:net";
 import { join, resolve } from "node:path";
 import puppeteer, { type Browser, type Page } from "puppeteer-core";
+import { SMOKE_DIALOG_DIR, SMOKE_TEMP_DIR } from "../../main/smoke/env";
 import { sleep } from "./page";
 
 export const BASELINE_RUN_MS = 23_000;
@@ -113,7 +114,7 @@ function launchApp(port: number, tempDir: string, dialogDir: string): ChildProce
 	const child: ChildProcess = spawn(npmCommand, ["run", "start", "--", "--", `--remote-debugging-port=${port}`], {
 		cwd: REPO_ROOT,
 		stdio: ["pipe", "pipe", "pipe"],
-		env: { ...process.env, DCG_SMOKE_TEMP_DIR: tempDir, DCG_SMOKE_DIALOG_DIR: dialogDir },
+		env: { ...process.env, [SMOKE_TEMP_DIR]: tempDir, [SMOKE_DIALOG_DIR]: dialogDir },
 		windowsHide: true,
 		shell: process.platform === "win32",
 	});
