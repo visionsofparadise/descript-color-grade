@@ -2,7 +2,6 @@
 	"$schema": "https://unpkg.com/knip@6/schema.json",
 	"project": ["src/**/*.{ts,tsx}"],
 	"entry": ["src/main/index.ts", "src/preload/index.ts"],
-	"ignore": ["src/tests/actions/newProject.ts"],
 	"ignoreBinaries": ["ffmpeg"],
 	"ignoreDependencies": [
 		"prettier",

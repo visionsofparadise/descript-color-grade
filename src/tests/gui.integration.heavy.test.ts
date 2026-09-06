@@ -9,6 +9,7 @@ import { clearAllValues } from "./actions/clearAllValues";
 import { dragSlider } from "./actions/dragSlider";
 import { editPath } from "./actions/editPath";
 import { importMedia } from "./actions/importMedia";
+import { newProject } from "./actions/newProject";
 import { openProject } from "./actions/openProject";
 import { redo } from "./actions/redo";
 import { removeFrame } from "./actions/removeFrame";
@@ -242,10 +243,7 @@ describe("Boot", () => {
 
 describe("Import", () => {
 	it("imports three images as one entry the menu reads back after an undo and a redo", async () => {
-		const seedPath = join(app.savesDir, "import.dcg");
-
-		writeProjectFile(seedPath, []);
-		await openProject(app, seedPath);
+		await newProject(app.page);
 		await app.page.waitForFunction(
 			() => document.body.textContent?.includes("Load images or videos to get started") ?? false,
 			{ timeout: WAIT_TIMEOUT_MS },
