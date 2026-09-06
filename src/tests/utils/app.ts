@@ -6,7 +6,7 @@ import { join, resolve } from "node:path";
 import puppeteer, { type Browser, type Page } from "puppeteer-core";
 import { sleep } from "./page";
 
-export const BASELINE_RUN_MS = 23_000;
+export const BASELINE_RUN_MS = 52_000;
 
 const REPO_ROOT = resolve(import.meta.dirname, "../../..");
 const PROFILE_DIR = join(REPO_ROOT, ".smoke-profile");
@@ -135,11 +135,7 @@ function killProcessTree(child: ChildProcess): void {
 		return;
 	}
 
-	try {
-		process.kill(-pid, "SIGKILL");
-	} catch (error) {
-		void error;
-	}
+	child.kill("SIGKILL");
 }
 
 export async function startApp(): Promise<SmokeApp> {
@@ -160,27 +156,36 @@ export async function startApp(): Promise<SmokeApp> {
 	const port = await getFreePort();
 	const child = launchApp(port, tempDir, dialogDir);
 
-	await waitForCdp(port, CDP_TIMEOUT_MS);
+	try {
+		await waitForCdp(port, CDP_TIMEOUT_MS);
 
-	const browser = await puppeteer.connect({ browserURL: `http://127.0.0.1:${port}` });
-
-	browser.on("targetcreated", (target) => {
-		void target.page().then((created) => {
-			if (created) attachCollectors(created, consoleErrors, pageErrors);
+		const browser = await puppeteer.connect({
+			browserURL: `http://127.0.0.1:${port}`,
+			defaultViewport: null,
 		});
-	});
 
-	for (const existing of await browser.pages()) attachCollectors(existing, consoleErrors, pageErrors);
+		browser.on("targetcreated", (target) => {
+			void target.page().then((created) => {
+				if (created) attachCollectors(created, consoleErrors, pageErrors);
+			});
+		});
 
-	const page = await findAppPage(browser, PAGE_TIMEOUT_MS);
+		for (const existing of await browser.pages()) attachCollectors(existing, consoleErrors, pageErrors);
 
-	attachCollectors(page, consoleErrors, pageErrors);
+		const page = await findAppPage(browser, PAGE_TIMEOUT_MS);
 
-	const close = async (): Promise<void> => {
-		await browser.disconnect().catch(() => undefined);
+		attachCollectors(page, consoleErrors, pageErrors);
 
+		const close = async (): Promise<void> => {
+			await browser.disconnect().catch(() => undefined);
+
+			killProcessTree(child);
+		};
+
+		return { page, profileDir, tempDir, dialogDir, mediaDir, savesDir, consoleErrors, pageErrors, close };
+	} catch (error) {
 		killProcessTree(child);
-	};
 
-	return { page, profileDir, tempDir, dialogDir, mediaDir, savesDir, consoleErrors, pageErrors, close };
+		throw error;
+	}
 }

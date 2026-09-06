@@ -8,7 +8,7 @@ function appendQueuedResponse(app: SmokeApp, fileName: string, response: unknown
 
 	queue.push(response);
 
-	const pendingPath = `${filePath}.pending`;
+	const pendingPath = `${filePath}.${String(process.pid)}.pending`;
 
 	writeFileSync(pendingPath, JSON.stringify(queue), "utf8");
 	renameSync(pendingPath, filePath);

@@ -23,12 +23,12 @@ import { undo } from "./actions/undo";
 import { wheelSlider } from "./actions/wheelSlider";
 import { BASELINE_RUN_MS, startApp, type SmokeApp } from "./utils/app";
 import {
-	frameNames,
-	menuItemDisabled,
+	readFrameNames,
+	isMenuItemDisabled,
 	readProject,
 	sleep,
-	sliderValue,
-	sliderValues,
+	readSliderValue,
+	readSliderValues,
 	waitForRenderer,
 } from "./utils/page";
 import { hasFfmpeg, seedFixtures, type Fixtures } from "./utils/seed";
@@ -131,7 +131,7 @@ async function waitForFrameList(page: Page, names: ReadonlyArray<string>): Promi
 async function expectFrameList(page: Page, names: ReadonlyArray<string>): Promise<void> {
 	await waitForFrameList(page, names).catch(() => undefined);
 
-	expect(await frameNames(page)).toEqual([...names]);
+	expect(await readFrameNames(page)).toEqual([...names]);
 }
 
 async function expectSliderValue(page: Page, label: string, value: number): Promise<void> {
@@ -149,7 +149,7 @@ async function expectSliderValue(page: Page, label: string, value: number): Prom
 		)
 		.catch(() => undefined);
 
-	expect(await sliderValue(page, label)).toBe(value);
+	expect(await readSliderValue(page, label)).toBe(value);
 }
 
 async function expectSliderValues(page: Page, expected: Record<string, number>): Promise<void> {
@@ -174,7 +174,7 @@ async function expectSliderValues(page: Page, expected: Record<string, number>):
 		)
 		.catch(() => undefined);
 
-	expect(await sliderValues(page)).toEqual(expected);
+	expect(await readSliderValues(page)).toEqual(expected);
 }
 
 async function waitForSelected(page: Page, name: string): Promise<void> {
@@ -212,7 +212,7 @@ async function menuLabels(page: Page): Promise<Array<string>> {
 async function loadSeed(name: string, media: ReadonlyArray<MediaEntry>): Promise<void> {
 	await app.page.waitForSelector(APP_MENU_SELECTOR, { timeout: WAIT_TIMEOUT_MS });
 
-	if ((await frameNames(app.page)).length > 0) {
+	if ((await readFrameNames(app.page)).length > 0) {
 		await clearAllFrames(app.page);
 		await waitForFrameList(app.page, []);
 	}
@@ -274,7 +274,7 @@ describe("Boot", () => {
 
 		expect(buttonTexts).toContain("New Project");
 		expect(buttonTexts).toContain("Open Project");
-		expect(await frameNames(app.page)).toEqual([]);
+		expect(await readFrameNames(app.page)).toEqual([]);
 	});
 
 	it("carries no Undo or Redo in the app menu while no project is loaded", async () => {
@@ -310,8 +310,8 @@ describe("Import", () => {
 	});
 
 	it("carries Undo enabled and Redo disabled in the app menu once a project is open", async () => {
-		expect(await menuItemDisabled(app.page, "Undo")).toBe(false);
-		expect(await menuItemDisabled(app.page, "Redo")).toBe(true);
+		expect(await isMenuItemDisabled(app.page, "Undo")).toBe(false);
+		expect(await isMenuItemDisabled(app.page, "Redo")).toBe(true);
 	});
 });
 
@@ -323,7 +323,7 @@ describe("Slider drag", () => {
 		await dragSlider(app.page, "Saturation", [-40, -10, 20, 50, 70]);
 		await expectSliderValue(app.page, "Saturation", 70);
 
-		expect(await menuItemDisabled(app.page, "Undo")).toBe(false);
+		expect(await isMenuItemDisabled(app.page, "Undo")).toBe(false);
 
 		await undo(app.page);
 		await expectSliderValues(app.page, NEUTRAL_SLIDER_VALUES);

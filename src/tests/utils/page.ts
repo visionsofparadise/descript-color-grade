@@ -19,11 +19,11 @@ export function sleep(ms: number): Promise<void> {
 	return new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
 }
 
-export function sliderSelector(label: string, slot: string): string {
+export function sliderSelectorOf(label: string, slot: string): string {
 	return `[data-slot="slider"][aria-label="${label}"] [data-slot="${slot}"]`;
 }
 
-export function sliderInputSelector(label: string): string {
+export function sliderInputSelectorOf(label: string): string {
 	return `div:has(> [data-slot="slider"][aria-label="${label}"]) input[data-slot="input"]`;
 }
 
@@ -31,7 +31,7 @@ export function centerOf(box: ElementBox): Point {
 	return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 }
 
-export async function elementBox(page: Page, selector: string): Promise<ElementBox> {
+export async function boxOf(page: Page, selector: string): Promise<ElementBox> {
 	const handle = await page.waitForSelector(selector);
 	const box = await handle?.boundingBox();
 
@@ -75,7 +75,7 @@ export async function setNativeInputValue(page: Page, selector: string, value: s
 	);
 }
 
-export async function sliderValues(page: Page): Promise<Record<string, number>> {
+export async function readSliderValues(page: Page): Promise<Record<string, number>> {
 	return page.$$eval('[data-slot="slider"]', (sliders) => {
 		const values: Record<string, number> = {};
 
@@ -90,13 +90,16 @@ export async function sliderValues(page: Page): Promise<Record<string, number>> 
 	});
 }
 
-export async function sliderValue(page: Page, label: string): Promise<number> {
-	const values = await sliderValues(page);
+export async function readSliderValue(page: Page, label: string): Promise<number> {
+	const values = await readSliderValues(page);
+	const value = values[label];
 
-	return values[label] ?? Number.NaN;
+	if (value === undefined) throw new Error(`Slider row ${label} was not found`);
+
+	return value;
 }
 
-export async function frameNames(page: Page): Promise<Array<string>> {
+export async function readFrameNames(page: Page): Promise<Array<string>> {
 	return page.$$eval('[aria-label^="Select "]', (elements) =>
 		elements.map((element) => (element.getAttribute("aria-label") ?? "").replace(/^Select /, "")),
 	);
@@ -177,12 +180,16 @@ async function menuItemState(page: Page, label: string, activate: boolean): Prom
 		activate,
 	);
 
-	if (disabled === null) throw new Error(`App menu item ${label} was not found`);
+	if (disabled === null) {
+		await page.click(APP_MENU_SELECTOR);
+
+		throw new Error(`App menu item ${label} was not found`);
+	}
 
 	return disabled;
 }
 
-export async function menuItemDisabled(page: Page, label: string): Promise<boolean> {
+export async function isMenuItemDisabled(page: Page, label: string): Promise<boolean> {
 	const disabled = await menuItemState(page, label, false);
 
 	await page.click(APP_MENU_SELECTOR);

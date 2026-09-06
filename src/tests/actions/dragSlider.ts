@@ -1,4 +1,4 @@
-import { centerOf, elementBox, sleep, sliderSelector } from "../utils/page";
+import { centerOf, boxOf, sleep, sliderSelectorOf } from "../utils/page";
 import type { Page } from "puppeteer-core";
 
 const MINIMUM_VALUE = -100;
@@ -6,8 +6,8 @@ const VALUE_RANGE = 200;
 const TICK_DWELL_MS = 60;
 
 export async function dragSlider(page: Page, label: string, values: Array<number>): Promise<void> {
-	const thumb = centerOf(await elementBox(page, sliderSelector(label, "slider-thumb")));
-	const track = await elementBox(page, sliderSelector(label, "slider-track"));
+	const thumb = centerOf(await boxOf(page, sliderSelectorOf(label, "slider-thumb")));
+	const track = await boxOf(page, sliderSelectorOf(label, "slider-track"));
 
 	await page.mouse.move(thumb.x, thumb.y);
 	await page.mouse.down();

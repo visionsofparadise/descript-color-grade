@@ -19,7 +19,7 @@ export function shiftQueuedResponse<Answer>(fileName: string): Answer | undefine
 
 	const queue = parsed as Array<Answer | null>;
 	const head = queue.shift();
-	const pendingPath = `${filePath}.pending`;
+	const pendingPath = `${filePath}.${String(process.pid)}.pending`;
 
 	writeFileSync(pendingPath, JSON.stringify(queue), "utf8");
 	renameSync(pendingPath, filePath);
