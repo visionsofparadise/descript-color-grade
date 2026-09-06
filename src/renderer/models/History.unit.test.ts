@@ -173,7 +173,7 @@ describe("History", () => {
 		expect(history.stack).toHaveLength(1);
 	});
 
-	it("canUndo is reactive across generations", () => {
+	it("canUndo follows the recorded stack", () => {
 		const { target, history } = createFixture();
 
 		expect(history.canUndo).toBe(false);
@@ -221,7 +221,7 @@ describe("History", () => {
 		expect(target.list[4]?.id).toBe("e");
 	});
 
-	it("undo of a whole-array replacement restores the previous array and entry identity", () => {
+	it("undo of a whole-array replacement restores the previous array", () => {
 		const { target, history } = createFixture();
 
 		const first = target.list[0];
@@ -268,6 +268,66 @@ describe("History", () => {
 
 		expect(history.stack).toHaveLength(2);
 		expect(history.stack[1]?.transactionKey).not.toBe("k1");
+	});
+
+	it("interleaved metas keep their emission order", () => {
+		const { target, history } = createFixture();
+
+		batch(() => {
+			target.value = 5;
+		}, "k1");
+
+		target.value = 9;
+
+		batch(() => {
+			target.value = 12;
+		}, "k1");
+
+		flush(target);
+
+		expect(history.stack.map((entry) => entry.transactionKey.startsWith("k1"))).toEqual([true, false, true]);
+
+		history.undo();
+
+		expect(target.value).toBe(9);
+
+		history.undo();
+
+		expect(target.value).toBe(5);
+
+		history.undo();
+
+		expect(target.value).toBe(0);
+	});
+
+	it("a resumed transaction after an undo drops the forward entries", () => {
+		const { target, history } = createFixture();
+
+		batch(() => {
+			target.value = 1;
+		}, "drag-1");
+
+		flush(target);
+
+		target.value = 7;
+
+		flush(target);
+
+		history.undo();
+
+		batch(() => {
+			target.value = 2;
+		}, "drag-1");
+
+		flush(target);
+
+		expect(history.stack).toHaveLength(1);
+		expect(history.canRedo).toBe(false);
+		expect(target.value).toBe(2);
+
+		history.undo();
+
+		expect(target.value).toBe(0);
 	});
 
 	it("undo of an added key removes it and a key holding undefined keeps it", () => {

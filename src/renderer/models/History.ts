@@ -65,30 +65,41 @@ export function createHistory(target: object): History {
 	const record = (transactionKey: string | undefined, operations: ReadonlyArray<Operation<ProjectMeta>>) => {
 		const current = history.stack[history.index];
 
+		history.stack.splice(history.index + 1);
+
 		if (transactionKey !== undefined && current?.transactionKey === transactionKey) {
 			current.operations.push(...operations);
 
 			return;
 		}
 
-		history.stack.splice(history.index + 1);
 		history.stack.push({ transactionKey: transactionKey ?? crypto.randomUUID(), operations: [...operations] });
 		history.index = history.stack.length - 1;
 	};
 
 	subscribe<ProjectMeta>(target, (operations) => {
-		const groups = new Map<ProjectMeta, Array<Operation<ProjectMeta>>>();
+		let run = new Array<Operation<ProjectMeta>>();
+		let runMeta: ProjectMeta;
+
+		const recordRun = () => {
+			if (run.length === 0) return;
+
+			record(typeof runMeta === "string" ? runMeta : undefined, run);
+
+			run = [];
+		};
 
 		for (const operation of operations) {
 			if (operation.meta === replayMeta) continue;
 
-			const group = groups.get(operation.meta);
+			if (run.length > 0 && operation.meta !== runMeta) recordRun();
 
-			if (group) group.push(operation);
-			else groups.set(operation.meta, [operation]);
+			runMeta = operation.meta;
+
+			run.push(operation);
 		}
 
-		for (const [meta, group] of groups) record(typeof meta === "string" ? meta : undefined, group);
+		recordRun();
 	});
 
 	return history;
