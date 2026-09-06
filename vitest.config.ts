@@ -3,14 +3,35 @@ import { playwright } from "@vitest/browser-playwright";
 
 export default defineConfig({
 	test: {
-		globals: true,
-		passWithNoTests: true,
-		include: ["src/**/*.test.ts"],
-		browser: {
-			enabled: true,
-			provider: playwright(),
-			headless: true,
-			instances: [{ browser: "chromium" }],
-		},
+		projects: [
+			{
+				test: {
+					name: "unit",
+					globals: true,
+					passWithNoTests: true,
+					include: ["src/**/*.unit.test.ts"],
+					browser: {
+						enabled: true,
+						provider: playwright(),
+						headless: true,
+						instances: [{ browser: "chromium" }],
+					},
+				},
+			},
+			{
+				test: {
+					name: "integration",
+					globals: true,
+					passWithNoTests: true,
+					include: ["src/**/*.integration.test.ts"],
+					browser: {
+						enabled: true,
+						provider: playwright(),
+						headless: true,
+						instances: [{ browser: "chromium" }],
+					},
+				},
+			},
+		],
 	},
 });
