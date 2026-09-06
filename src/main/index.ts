@@ -4,12 +4,20 @@ import squirrelStartup from "electron-squirrel-startup";
 import { ASYNC_MAIN_IPCS } from "../shared/ipc/asyncMainIpcs";
 import { getContentSecurityPolicy } from "./getContentSecurityPolicy";
 import { MEDIA_SCHEME_CONFIG, registerMediaProtocol } from "./registerMediaProtocol";
+import { SMOKE_DIALOG_DIR } from "./smoke/dialogQueue";
+import { SMOKE_ASYNC_MAIN_IPCS } from "./smoke/smokeAsyncMainIpcs";
 
 if (squirrelStartup) {
 	app.quit();
 }
 
 protocol.registerSchemesAsPrivileged([MEDIA_SCHEME_CONFIG]);
+
+const smokeTempDir = process.env.DCG_SMOKE_TEMP_DIR;
+
+if (smokeTempDir) {
+	app.setPath("temp", smokeTempDir);
+}
 
 const createMainWindow = (): BrowserWindow => {
 	const devIconPath = MAIN_WINDOW_VITE_DEV_SERVER_URL ? path.join(__dirname, "../../assets/icon.ico") : undefined;
@@ -44,7 +52,9 @@ const createMainWindow = (): BrowserWindow => {
 		});
 	});
 
-	for (const AsyncMainIpcCtor of ASYNC_MAIN_IPCS) {
+	const asyncMainIpcs = process.env[SMOKE_DIALOG_DIR] ? SMOKE_ASYNC_MAIN_IPCS : ASYNC_MAIN_IPCS;
+
+	for (const AsyncMainIpcCtor of asyncMainIpcs) {
 		new AsyncMainIpcCtor().register({ browserWindow: mainWindow });
 	}
 

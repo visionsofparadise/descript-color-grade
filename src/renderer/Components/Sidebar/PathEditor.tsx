@@ -52,6 +52,7 @@ export function PathEditor({ entryIndex, value, context }: PathEditorProps) {
 			<p className="text-xs uppercase tracking-wider text-neutral-500 mb-1">Path</p>
 			<Input
 				type="text"
+				aria-label="Path"
 				value={localValue}
 				onChange={handleChange}
 				onBlur={commit}
