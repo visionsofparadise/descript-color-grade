@@ -114,3 +114,52 @@ void main() {
   );
 }
 `;
+
+export const RESAMPLE_FRAGMENT_SOURCE = `
+precision highp float;
+
+uniform sampler2D uSource;
+uniform vec2 uSourceSize;
+uniform vec2 uDirection;
+uniform float uRatio;
+
+float bicubicWeight(float position) {
+  float x = abs(position);
+
+  if (x < 1.0) {
+    return (8.4 * x * x * x - 14.4 * x * x + 6.0) / 6.0;
+  }
+
+  if (x < 2.0) {
+    return (-3.6 * x * x * x + 18.0 * x * x - 28.8 * x + 14.4) / 6.0;
+  }
+
+  return 0.0;
+}
+
+void main() {
+  vec2 across = vec2(1.0) - uDirection;
+  float extent = dot(uSourceSize, uDirection);
+  float stretch = max(uRatio, 1.0);
+  float center = (dot(floor(gl_FragCoord.xy), uDirection) + 0.5) * uRatio - 0.5;
+  float first = floor(center - 2.0 * stretch);
+  float last = ceil(center + 2.0 * stretch);
+  vec4 total = vec4(0.0);
+  float weightTotal = 0.0;
+
+  for (int offset = 0; offset < 1024; offset++) {
+    float tap = first + float(offset);
+
+    if (tap > last) {
+      break;
+    }
+
+    float weight = bicubicWeight((tap - center) / stretch);
+    vec2 texel = gl_FragCoord.xy * across + (clamp(tap, 0.0, extent - 1.0) + 0.5) * uDirection;
+    total += texture2D(uSource, texel / uSourceSize) * weight;
+    weightTotal += weight;
+  }
+
+  gl_FragColor = total / weightTotal;
+}
+`;

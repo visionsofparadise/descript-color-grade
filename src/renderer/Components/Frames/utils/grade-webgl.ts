@@ -1,4 +1,4 @@
-import { FRAGMENT_SOURCE, VERTEX_SOURCE } from "./grade-shader";
+import { FRAGMENT_SOURCE, RESAMPLE_FRAGMENT_SOURCE, VERTEX_SOURCE } from "./grade-shader";
 import type { GradePipelineUniforms, Mat4 } from "./grade-uniforms";
 
 export interface GradeProgram {
@@ -17,6 +17,28 @@ export interface GradeProgram {
 		uWhiteBalanceTint: WebGLUniformLocation;
 		uWhiteBalanceFilter: WebGLUniformLocation;
 	};
+}
+
+export interface ResampleProgram {
+	program: WebGLProgram;
+	quadBuffer: WebGLBuffer;
+	locations: {
+		aPosition: number;
+		uSource: WebGLUniformLocation;
+		uSourceSize: WebGLUniformLocation;
+		uDirection: WebGLUniformLocation;
+		uRatio: WebGLUniformLocation;
+	};
+}
+
+export interface ResampleTarget {
+	width: number;
+	height: number;
+	sourceHeight: number;
+	intermediateTexture: WebGLTexture;
+	intermediateFramebuffer: WebGLFramebuffer;
+	texture: WebGLTexture;
+	framebuffer: WebGLFramebuffer;
 }
 
 function compileShader(gl: WebGLRenderingContext, type: number, source: string): WebGLShader {
@@ -48,9 +70,12 @@ function requireUniform(gl: WebGLRenderingContext, program: WebGLProgram, name: 
 	return location;
 }
 
-export function createGradeProgram(gl: WebGLRenderingContext): GradeProgram {
+function createQuadProgram(
+	gl: WebGLRenderingContext,
+	fragmentSource: string,
+): { program: WebGLProgram; quadBuffer: WebGLBuffer } {
 	const vertexShader = compileShader(gl, gl.VERTEX_SHADER, VERTEX_SOURCE);
-	const fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SOURCE);
+	const fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, fragmentSource);
 
 	const program = gl.createProgram();
 
@@ -74,6 +99,12 @@ export function createGradeProgram(gl: WebGLRenderingContext): GradeProgram {
 	gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer);
 	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
 
+	return { program, quadBuffer };
+}
+
+export function createGradeProgram(gl: WebGLRenderingContext): GradeProgram {
+	const { program, quadBuffer } = createQuadProgram(gl, FRAGMENT_SOURCE);
+
 	const locations = {
 		aPosition: gl.getAttribLocation(program, "aPosition"),
 		uSource: requireUniform(gl, program, "uSource"),
@@ -91,21 +122,168 @@ export function createGradeProgram(gl: WebGLRenderingContext): GradeProgram {
 	return { program, quadBuffer, locations };
 }
 
-export function destroyGradeProgram(gl: WebGLRenderingContext, grade: GradeProgram): void {
-	gl.deleteBuffer(grade.quadBuffer);
-	gl.deleteProgram(grade.program);
+export function createResampleProgram(gl: WebGLRenderingContext): ResampleProgram {
+	const { program, quadBuffer } = createQuadProgram(gl, RESAMPLE_FRAGMENT_SOURCE);
+
+	const locations = {
+		aPosition: gl.getAttribLocation(program, "aPosition"),
+		uSource: requireUniform(gl, program, "uSource"),
+		uSourceSize: requireUniform(gl, program, "uSourceSize"),
+		uDirection: requireUniform(gl, program, "uDirection"),
+		uRatio: requireUniform(gl, program, "uRatio"),
+	};
+
+	return { program, quadBuffer, locations };
+}
+
+export function destroyQuadProgram(gl: WebGLRenderingContext, quad: GradeProgram | ResampleProgram): void {
+	gl.deleteBuffer(quad.quadBuffer);
+	gl.deleteProgram(quad.program);
+}
+
+function setTextureParameters(gl: WebGLRenderingContext, filter: number): void {
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
 }
 
 export function createTexture(gl: WebGLRenderingContext): WebGLTexture {
 	const texture = gl.createTexture();
 
 	gl.bindTexture(gl.TEXTURE_2D, texture);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+	setTextureParameters(gl, gl.LINEAR);
 
 	return texture;
+}
+
+function createFramebufferTexture(
+	gl: WebGLRenderingContext,
+	width: number,
+	height: number,
+	type: number,
+	filter: number,
+): { texture: WebGLTexture; framebuffer: WebGLFramebuffer } | null {
+	const texture = gl.createTexture();
+
+	gl.bindTexture(gl.TEXTURE_2D, texture);
+	setTextureParameters(gl, filter);
+	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, type, null);
+
+	const framebuffer = gl.createFramebuffer();
+
+	gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+
+	const complete = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+
+	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+	if (complete) return { texture, framebuffer };
+
+	gl.deleteFramebuffer(framebuffer);
+	gl.deleteTexture(texture);
+
+	return null;
+}
+
+export function createResampleTarget(
+	gl: WebGLRenderingContext,
+	sourceHeight: number,
+	width: number,
+	height: number,
+): ResampleTarget {
+	const halfFloat = gl.getExtension("OES_texture_half_float");
+
+	gl.getExtension("EXT_color_buffer_half_float");
+
+	const intermediate =
+		(halfFloat === null
+			? null
+			: createFramebufferTexture(gl, width, sourceHeight, halfFloat.HALF_FLOAT_OES, gl.NEAREST)) ??
+		createFramebufferTexture(gl, width, sourceHeight, gl.UNSIGNED_BYTE, gl.NEAREST);
+	const output = createFramebufferTexture(gl, width, height, gl.UNSIGNED_BYTE, gl.LINEAR);
+
+	if (intermediate === null || output === null) throw new Error("resample framebuffer incomplete");
+
+	return {
+		width,
+		height,
+		sourceHeight,
+		intermediateTexture: intermediate.texture,
+		intermediateFramebuffer: intermediate.framebuffer,
+		texture: output.texture,
+		framebuffer: output.framebuffer,
+	};
+}
+
+export function destroyResampleTarget(gl: WebGLRenderingContext, target: ResampleTarget): void {
+	gl.deleteFramebuffer(target.intermediateFramebuffer);
+	gl.deleteTexture(target.intermediateTexture);
+	gl.deleteFramebuffer(target.framebuffer);
+	gl.deleteTexture(target.texture);
+}
+
+interface ResamplePass {
+	input: WebGLTexture;
+	inputWidth: number;
+	inputHeight: number;
+	framebuffer: WebGLFramebuffer;
+	outputWidth: number;
+	outputHeight: number;
+	horizontal: boolean;
+}
+
+function drawResamplePass(gl: WebGLRenderingContext, resample: ResampleProgram, pass: ResamplePass): void {
+	gl.bindFramebuffer(gl.FRAMEBUFFER, pass.framebuffer);
+	gl.viewport(0, 0, pass.outputWidth, pass.outputHeight);
+	gl.bindTexture(gl.TEXTURE_2D, pass.input);
+	gl.uniform2f(resample.locations.uSourceSize, pass.inputWidth, pass.inputHeight);
+	gl.uniform2f(resample.locations.uDirection, pass.horizontal ? 1 : 0, pass.horizontal ? 0 : 1);
+	gl.uniform1f(
+		resample.locations.uRatio,
+		pass.horizontal ? pass.inputWidth / pass.outputWidth : pass.inputHeight / pass.outputHeight,
+	);
+	gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
+
+export function drawResample(
+	gl: WebGLRenderingContext,
+	resample: ResampleProgram,
+	sourceTexture: WebGLTexture,
+	sourceWidth: number,
+	sourceHeight: number,
+	target: ResampleTarget,
+): void {
+	gl.useProgram(resample.program);
+
+	gl.bindBuffer(gl.ARRAY_BUFFER, resample.quadBuffer);
+	gl.enableVertexAttribArray(resample.locations.aPosition);
+	gl.vertexAttribPointer(resample.locations.aPosition, 2, gl.FLOAT, false, 0, 0);
+
+	gl.activeTexture(gl.TEXTURE0);
+	gl.uniform1i(resample.locations.uSource, 0);
+
+	drawResamplePass(gl, resample, {
+		input: sourceTexture,
+		inputWidth: sourceWidth,
+		inputHeight: sourceHeight,
+		framebuffer: target.intermediateFramebuffer,
+		outputWidth: target.width,
+		outputHeight: sourceHeight,
+		horizontal: true,
+	});
+	drawResamplePass(gl, resample, {
+		input: target.intermediateTexture,
+		inputWidth: target.width,
+		inputHeight: sourceHeight,
+		framebuffer: target.framebuffer,
+		outputWidth: target.width,
+		outputHeight: target.height,
+		horizontal: false,
+	});
+
+	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 }
 
 export type TextureSource = HTMLImageElement | HTMLVideoElement | HTMLCanvasElement | ImageBitmap | ImageData;

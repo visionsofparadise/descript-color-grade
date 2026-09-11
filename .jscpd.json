@@ -13,6 +13,7 @@
 		"**/__fixtures__/**",
 		"**/types/*.d.ts",
 		"reference/stills/descript-golden.json",
+		"reference/proxy/swscale-bicubic.json",
 		"**/package.json",
 		"package-lock.json",
 		"pnpm-lock.yaml",

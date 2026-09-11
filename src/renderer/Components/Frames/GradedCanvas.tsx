@@ -2,12 +2,19 @@ import { useEffect, useRef } from "react";
 import { buildUniforms } from "./utils/grade-uniforms";
 import {
 	createGradeProgram,
+	createResampleProgram,
+	createResampleTarget,
 	createTexture,
-	destroyGradeProgram,
+	destroyQuadProgram,
+	destroyResampleTarget,
 	drawGrade,
+	drawResample,
 	uploadTexture,
 	type GradeProgram,
+	type ResampleProgram,
+	type ResampleTarget,
 } from "./utils/grade-webgl";
+import { proxyDimensionsOf } from "./utils/proxy-dimensions";
 import type { DescriptColorModel, VideoTreatment } from "@/models/Project";
 
 interface GradedCanvasProps {
@@ -51,11 +58,13 @@ export function GradedCanvas({
 	const canvasRef = useRef<HTMLCanvasElement | null>(null);
 	const glRef = useRef<WebGLRenderingContext | null>(null);
 	const programRef = useRef<GradeProgram | null>(null);
+	const resampleProgramRef = useRef<ResampleProgram | null>(null);
+	const resampleTargetRef = useRef<ResampleTarget | null>(null);
 	const textureRef = useRef<WebGLTexture | null>(null);
 	const imageRef = useRef<HTMLImageElement | null>(null);
 	const videoRef = useRef<HTMLVideoElement | null>(null);
 	const sourceReadyRef = useRef(false);
-	const sourceAspectRef = useRef<number | null>(null);
+	const sourceSizeRef = useRef<{ width: number; height: number } | null>(null);
 	const lastCanvasSizeRef = useRef<{ width: number; height: number } | null>(null);
 	const fitRef = useRef(fit);
 
@@ -101,19 +110,57 @@ export function GradedCanvas({
 		const gl = glRef.current;
 		const program = programRef.current;
 		const texture = textureRef.current;
+		const canvas = canvasRef.current;
 
-		if (gl === null || program === null || texture === null) return;
+		if (gl === null || program === null || texture === null || canvas === null) return;
 
 		if (!sourceReadyRef.current) return;
+
+		gl.viewport(0, 0, canvas.width, canvas.height);
 
 		drawGrade(
 			gl,
 			program,
-			texture,
+			resampleTargetRef.current?.texture ?? texture,
 			buildUniforms(uniformsRef.current, {
 				colorModel: pipelineOptionsRef.current.colorModel,
 			}),
 		);
+	};
+
+	const refreshProxy = (): void => {
+		const gl = glRef.current;
+		const texture = textureRef.current;
+		const canvas = canvasRef.current;
+		const sourceSize = sourceSizeRef.current;
+
+		if (gl === null || texture === null || canvas === null || sourceSize === null) return;
+
+		let target = resampleTargetRef.current;
+
+		if (kind !== "video" || pipelineOptionsRef.current.videoTreatment !== "descript-optimized") {
+			if (target !== null) destroyResampleTarget(gl, target);
+
+			resampleTargetRef.current = null;
+
+			return;
+		}
+
+		const resample = (resampleProgramRef.current ??= createResampleProgram(gl));
+		const proxy = proxyDimensionsOf(sourceSize.width, sourceSize.height, canvas.width, canvas.height);
+
+		if (
+			target !== null &&
+			(target.width !== proxy.width || target.height !== proxy.height || target.sourceHeight !== sourceSize.height)
+		) {
+			destroyResampleTarget(gl, target);
+			target = null;
+		}
+
+		target ??= createResampleTarget(gl, sourceSize.height, proxy.width, proxy.height);
+		resampleTargetRef.current = target;
+
+		drawResample(gl, resample, texture, sourceSize.width, sourceSize.height, target);
 	};
 
 	const uploadCurrentSource = (): void => {
@@ -128,28 +175,31 @@ export function GradedCanvas({
 		if (kind === "image" && image !== null) {
 			uploadTexture(gl, texture, image);
 
-			sourceAspectRef.current = image.naturalWidth / image.naturalHeight;
+			sourceSizeRef.current = { width: image.naturalWidth, height: image.naturalHeight };
 			sourceReadyRef.current = true;
 		} else if (kind === "video" && video !== null) {
 			uploadTexture(gl, texture, video, {
 				premultiplyAlpha: pipelineOptionsRef.current.videoTreatment === "descript-optimized",
 			});
 
-			sourceAspectRef.current = video.videoWidth / video.videoHeight;
+			sourceSizeRef.current = { width: video.videoWidth, height: video.videoHeight };
 			sourceReadyRef.current = true;
 		}
+
+		if (lastCanvasSizeRef.current !== null) refreshProxy();
 	};
 
 	const resizeCanvas = (): void => {
 		const wrapper = wrapperRef.current;
 		const canvas = canvasRef.current;
 		const gl = glRef.current;
-		const sourceAspect = sourceAspectRef.current;
+		const sourceSize = sourceSizeRef.current;
 
 		if (wrapper === null || canvas === null || gl === null) return;
 
-		if (sourceAspect === null) return;
+		if (sourceSize === null) return;
 
+		const sourceAspect = sourceSize.width / sourceSize.height;
 		const rect = wrapper.getBoundingClientRect();
 		const dpr = window.devicePixelRatio || 1;
 		const wrapperCssW = rect.width;
@@ -203,6 +253,7 @@ export function GradedCanvas({
 		canvas.style.height = `${cssH}px`;
 		gl.viewport(0, 0, bufW, bufH);
 
+		refreshProxy();
 		render();
 	};
 
@@ -227,8 +278,22 @@ export function GradedCanvas({
 			const programValue = programRef.current;
 
 			if (programValue !== null) {
-				destroyGradeProgram(gl, programValue);
+				destroyQuadProgram(gl, programValue);
 				programRef.current = null;
+			}
+
+			const resampleProgramValue = resampleProgramRef.current;
+
+			if (resampleProgramValue !== null) {
+				destroyQuadProgram(gl, resampleProgramValue);
+				resampleProgramRef.current = null;
+			}
+
+			const resampleTargetValue = resampleTargetRef.current;
+
+			if (resampleTargetValue !== null) {
+				destroyResampleTarget(gl, resampleTargetValue);
+				resampleTargetRef.current = null;
 			}
 
 			const textureValue = textureRef.current;
@@ -244,7 +309,7 @@ export function GradedCanvas({
 
 	useEffect(() => {
 		sourceReadyRef.current = false;
-		sourceAspectRef.current = null;
+		sourceSizeRef.current = null;
 		lastCanvasSizeRef.current = null;
 
 		let cancelled = false;
