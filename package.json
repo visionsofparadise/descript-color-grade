@@ -84,7 +84,7 @@
 		"clsx": "^2.1.1",
 		"electron-squirrel-startup": "^1.0.1",
 		"lucide-react": "^1.8.0",
-		"opshot": "^0.6.0",
+		"opshot": "^0.6.1",
 		"pathe": "^2.0.3",
 		"radix-ui": "^1.4.3",
 		"react": "^19.2.5",
