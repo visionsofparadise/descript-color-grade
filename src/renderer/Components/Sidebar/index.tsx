@@ -1,7 +1,8 @@
-import { RotateCcw } from "lucide-react";
+import { ClipboardPaste, Copy, RotateCcw } from "lucide-react";
 import { scope } from "opshot/react";
 import { Button } from "@/Components/UI/button";
 import { NEUTRAL_PROPS, type GradeProps } from "@/models/Project";
+import { parseGradeProps, serializeGradeProps } from "@/utils/gradeClipboard";
 import { PathEditor } from "./PathEditor";
 import { SliderRow } from "./SliderRow";
 import type { ProjectContext } from "@/models/Context";
@@ -49,6 +50,21 @@ export const Sidebar = scope<SidebarProps>(({ context }) => {
 		if (target) target.props = { ...NEUTRAL_PROPS };
 	};
 
+	const handleCopy = () => {
+		void navigator.clipboard.writeText(serializeGradeProps(entry.props));
+	};
+
+	const handlePaste = async () => {
+		const text = await navigator.clipboard.readText();
+		const target = project.media[entryIndex];
+
+		if (!target) return;
+
+		const next = parseGradeProps(text, target.props);
+
+		if (next) target.props = next;
+	};
+
 	return (
 		<aside className="w-72 bg-neutral-950 text-neutral-100 border-l border-neutral-800 flex flex-col shrink-0">
 			<PathEditor entryIndex={entryIndex} value={entry.path} context={context} />
@@ -64,7 +80,29 @@ export const Sidebar = scope<SidebarProps>(({ context }) => {
 					/>
 				))}
 			</div>
-			<div className="shrink-0 border-t border-neutral-800 p-4">
+			<div className="shrink-0 border-t border-neutral-800 p-4 space-y-2">
+				<div className="grid grid-cols-2 gap-2">
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						onClick={handleCopy}
+						className="text-neutral-300 hover:text-neutral-100"
+					>
+						<Copy aria-hidden="true" />
+						Copy
+					</Button>
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						onClick={() => void handlePaste()}
+						className="text-neutral-300 hover:text-neutral-100"
+					>
+						<ClipboardPaste aria-hidden="true" />
+						Paste
+					</Button>
+				</div>
 				<Button
 					type="button"
 					variant="ghost"
@@ -73,7 +111,7 @@ export const Sidebar = scope<SidebarProps>(({ context }) => {
 					className="w-full text-neutral-300 hover:text-neutral-100"
 				>
 					<RotateCcw aria-hidden="true" />
-					Reset All Values
+					Reset All
 				</Button>
 			</div>
 		</aside>
