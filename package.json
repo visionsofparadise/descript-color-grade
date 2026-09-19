@@ -94,7 +94,9 @@
 	},
 	"allowScripts": {
 		"electron@41.2.0": true,
+		"electron-winstaller": false,
 		"esbuild@0.21.5": true,
+		"fsevents": false,
 		"unrs-resolver@1.11.1": true
 	}
 }
