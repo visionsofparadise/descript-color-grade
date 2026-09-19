@@ -1,0 +1,19 @@
+appId: com.visionsofparadise.descript-color-grade
+productName: Descript Color Grade
+directories:
+   buildResources: assets
+   output: out/make/nsis
+win:
+   executableName: descript-color-grade
+   icon: assets/icon.ico
+   target:
+      - target: nsis
+        arch: x64
+nsis:
+   artifactName: descript-color-grade-${version}-windows-x64-setup.exe
+   oneClick: false
+   perMachine: false
+   allowElevation: false
+   allowToChangeInstallationDirectory: false
+   runAfterFinish: true
+   include: assets/installer.nsh

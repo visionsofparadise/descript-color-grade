@@ -63,12 +63,20 @@ jobs:
 
          - run: npm ci
 
-         - run: npm run make
+         - if: matrix.platform == 'win32'
+           run: npm run make:windows
+
+         - if: matrix.platform != 'win32'
+           run: npm run make
 
          - uses: actions/upload-artifact@v4
            with:
               name: artifacts-${{ matrix.platform }}
-              path: out/make/**/*
+              path: |
+                 out/make/**/*.exe
+                 out/make/**/*.zip
+                 out/make/**/*.deb
+                 out/make/**/*.rpm
               if-no-files-found: error
 
    release:
@@ -89,9 +97,6 @@ jobs:
               draft: false
               files: |
                  artifacts/**/*.exe
-                 artifacts/**/*.nupkg
                  artifacts/**/*.zip
-                 artifacts/**/*.dmg
                  artifacts/**/*.deb
                  artifacts/**/*.rpm
-                 artifacts/**/*.AppImage

@@ -9,7 +9,6 @@
 		"@commitlint/cli",
 		"@electron-forge/maker-deb",
 		"@electron-forge/maker-rpm",
-		"@electron-forge/maker-squirrel",
 		"@electron-forge/maker-zip",
 		"@electron-forge/plugin-fuses",
 		"@electron/fuses",
