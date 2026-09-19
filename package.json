@@ -1,7 +1,7 @@
 {
 	"name": "descript-color-grade",
 	"productName": "Descript Color Grade",
-	"version": "1.2.0",
+	"version": "1.2.1",
 	"description": "Bit-exact Descript color grade preview for podcast grading",
 	"main": ".vite/build/main.js",
 	"private": true,
