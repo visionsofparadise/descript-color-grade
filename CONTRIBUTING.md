@@ -23,4 +23,4 @@ npm run integration:heavy
 
 ## Commits
 
-Commits follow [Conventional Commits](https://www.conventionalcommits.org/), and the commit-msg hook enforces it.
+Commits follow [Conventional Commits](https://www.conventionalcommits.org/), and the commit-msg hook enforces it. A commit body states the reasoning for the change and links the code, changes and commits it references with [Inspectory](https://github.com/visionsofparadise/inspectory) links.
