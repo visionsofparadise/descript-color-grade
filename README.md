@@ -17,3 +17,7 @@ Download: [Latest](https://github.com/visionsofparadise/descript-color-grade/rel
 | Linux    | `.deb`, `.rpm`                       |
 
 Builds are unsigned, so your OS will likely show a warning on first launch.
+
+## License
+
+[MIT](LICENSE)

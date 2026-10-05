@@ -102,3 +102,6 @@ descript-calibration/
 
 # Smoke profile
 .smoke-profile/
+
+# Transient files
+.scratch/
