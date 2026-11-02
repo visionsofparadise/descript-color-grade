@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { existsSync, writeFileSync } from "node:fs";
-import { basename, join } from "node:path";
+import { basename, isAbsolute, join, relative, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { DEFAULT_COLOR_MODEL, DEFAULT_VIDEO_TREATMENT, NEUTRAL_PROPS } from "../renderer/models/Project";
+import { mediaUrl } from "../renderer/utils/media";
 import { arrowStepSlider } from "./actions/arrowStepSlider";
 import { clearAllFrames } from "./actions/clearAllFrames";
 import { clearAllValues } from "./actions/clearAllValues";
@@ -117,6 +118,11 @@ async function waitForSavedProject(filePath: string): Promise<SavedProject> {
 	}
 
 	throw new Error(`saved project ${filePath} never appeared`);
+}
+
+function expectSavedPath(savedPath: string | undefined, absolutePath: string): void {
+	expect(isAbsolute(savedPath ?? "")).toBe(false);
+	expect(resolve(app.savesDir, savedPath ?? "")).toBe(absolutePath);
 }
 
 async function expectFrameList(page: Page, names: ReadonlyArray<string>): Promise<void> {
@@ -430,7 +436,7 @@ describe.skipIf(!hasFfmpeg())("Path edit on a video, skipped where ffmpeg is abs
 
 		const saved = await saveAndReload(join(app.savesDir, "path-edit-video-saved.dcg"), first);
 
-		expect(saved.media[2]?.path).toBe(videoPath);
+		expectSavedPath(saved.media[2]?.path, videoPath);
 		expect(saved.media[2]?.frameTime).toBe(scrubbed);
 	});
 });
@@ -463,7 +469,7 @@ describe.skipIf(!hasFfmpeg())("Scrub, skipped where ffmpeg is absent", () => {
 
 		const saved = await saveAndReload(join(app.savesDir, "scrub-saved.dcg"), first);
 
-		expect(saved.media[3]?.path).toBe(videoPath);
+		expectSavedPath(saved.media[3]?.path, videoPath);
 		expect(saved.media[3]?.frameTime).toBe(0);
 	});
 });
@@ -501,7 +507,9 @@ describe("Save round trip", () => {
 
 		if (savedProps === undefined) throw new Error("the saved project holds no third entry");
 
-		expect(saved.media.map((entry) => basename(entry.path))).toEqual([first, second, third]);
+		saved.media.forEach((entry, index) => {
+			expectSavedPath(entry.path, fixtures.images[index] ?? "");
+		});
 		expect(savedProps.saturation).toBe(33);
 		expect(savedProps.exposure).toBe(-12);
 
@@ -518,6 +526,24 @@ describe("Save round trip", () => {
 		);
 
 		await expectSliderValues(app.page, expected);
+	});
+});
+
+describe("Relative paths", () => {
+	it("opens media written relative to the project file and serves it", async () => {
+		const first = imageNames[0] ?? "";
+
+		await loadSeed(
+			"relative",
+			fixtures.images.map((filePath) => mediaEntryOf(relative(app.savesDir, filePath), "image")),
+		);
+		await selectFrameAndWait(first);
+
+		const shownPath = await app.page.$eval(PATH_INPUT_SELECTOR, (input) => (input as HTMLInputElement).value);
+		const status = await app.page.evaluate(async (url: string) => (await fetch(url)).status, mediaUrl(shownPath));
+
+		expect(resolve(shownPath)).toBe(fixtures.images[0]);
+		expect(status).toBe(200);
 	});
 });
 

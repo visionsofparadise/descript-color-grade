@@ -1,4 +1,4 @@
-import { basename, join } from "pathe";
+import { basename, dirname, isAbsolute, join, normalize, relative, resolve } from "pathe";
 import { DEFAULT_COLOR_MODEL, DEFAULT_VIDEO_TREATMENT } from "../models/Project";
 import type { AppContext } from "../models/Context";
 import type { DescriptColorModel, MediaEntry, Project, VideoTreatment } from "../models/Project";
@@ -18,10 +18,24 @@ interface ProjectFile {
 
 const PROJECT_FILTER = [{ name: "Descript Color Grade Project", extensions: ["dcg"] }];
 
+function toProjectRelative(mediaPath: string, projectPath: string): string {
+	const projectDir = dirname(projectPath);
+	const relativePath = relative(projectDir, mediaPath);
+
+	if (isAbsolute(relativePath) || resolve(projectDir, relativePath) !== normalize(mediaPath)) return mediaPath;
+
+	return relativePath;
+}
+
+function fromProjectRelative(mediaPath: string, projectPath: string): string {
+	return isAbsolute(mediaPath) ? mediaPath : resolve(dirname(projectPath), mediaPath);
+}
+
 function serializeProject(
 	media: ReadonlyArray<MediaEntry>,
 	colorModel: DescriptColorModel,
 	videoTreatment: VideoTreatment,
+	projectPath: string,
 ): string {
 	const payload: ProjectFile = {
 		version: 2,
@@ -29,6 +43,7 @@ function serializeProject(
 		videoTreatment,
 		media: media.map((entry) => ({
 			...entry,
+			path: toProjectRelative(entry.path, projectPath),
 			frameTime: entry.kind === "video" ? entry.frameTime : undefined,
 		})),
 	};
@@ -43,7 +58,7 @@ export async function saveProjectToPath(
 	path: string,
 	context: AppContext,
 ): Promise<void> {
-	await context.main.writeFile(path, serializeProject(media, colorModel, videoTreatment));
+	await context.main.writeFile(path, serializeProject(media, colorModel, videoTreatment, path));
 }
 
 export async function saveProjectAs(
@@ -61,7 +76,7 @@ export async function saveProjectAs(
 
 	if (savePath === undefined) return undefined;
 
-	await context.main.writeFile(savePath, serializeProject(media, colorModel, videoTreatment));
+	await context.main.writeFile(savePath, serializeProject(media, colorModel, videoTreatment, savePath));
 
 	return savePath;
 }
@@ -90,7 +105,10 @@ export async function openProject(path: string, context: AppContext): Promise<Pr
 		throw new Error("unsupported project file version");
 	}
 
-	const media = (parsed as ProjectFile).media;
+	const media = (parsed as ProjectFile).media.map((entry) => ({
+		...entry,
+		path: fromProjectRelative(entry.path, path),
+	}));
 	const colorModel = (parsed as { colorModel?: unknown }).colorModel === "legacy" ? "legacy" : DEFAULT_COLOR_MODEL;
 	const videoTreatment =
 		(parsed as { videoTreatment?: unknown }).videoTreatment === "raw-source" ? "raw-source" : DEFAULT_VIDEO_TREATMENT;
@@ -115,7 +133,10 @@ export async function createNewProject(path: string, context: AppContext): Promi
 		videoTreatment: DEFAULT_VIDEO_TREATMENT,
 	};
 
-	await context.main.writeFile(path, serializeProject(project.media, project.colorModel, project.videoTreatment));
+	await context.main.writeFile(
+		path,
+		serializeProject(project.media, project.colorModel, project.videoTreatment, path),
+	);
 
 	return project;
 }
